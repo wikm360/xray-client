@@ -3,12 +3,27 @@
 import json
 import base64
 import urllib.parse
+import re
+
+def split_address_port(address_port):
+    if address_port.startswith('['):  # این بخش برای IPv6 است
+        match = re.match(r'\[([^\]]+)\]:(\d+)', address_port)
+        if match:
+            return match.group(1), match.group(2)  # بازگرداندن آدرس IPv6 و پورت
+    else:  # برای IPv4 یا نام دامنه
+        return address_port.split(':')
+
+def extract_name_vmess(config):
+    return config.get('ps', "Unnamed Config")
 
 def decode_vmess(link):
     link = link.replace("vmess://", "")
     decoded_bytes = base64.b64decode(link)
     decoded_str = decoded_bytes.decode('utf-8')
     config = json.loads(decoded_str)
+    config_name = extract_name_vmess(config)
+
+    address, port = split_address_port(f"{config['add']}:{config['port']}")
 
     stream_settings = {
         "network": config['net']
@@ -66,14 +81,14 @@ def decode_vmess(link):
             "protocol": "vmess",
             "settings": {
                 "vnext": [{
-                    "address": config['add'], "port": int(config['port']),
+                    "address": address, "port": int(port),
                     "users": [{"id": config['id'], "alterId": int(config['aid']), "security": config['scy']}]
                 }]
             },
             "streamSettings": stream_settings
         }]
     }
-    return json.dumps(xray_config, indent=4)
+    return json.dumps(xray_config, indent=4) , config_name
 
 
 def decode_vless(link):
@@ -82,7 +97,7 @@ def decode_vless(link):
     uuid = parts[0]
     remaining = parts[1]
     address_port, params = remaining.split('?')
-    address, port = address_port.split(':')
+    address, port = split_address_port(address_port)
     query_params = urllib.parse.parse_qs(params)
 
     stream_settings = {
@@ -148,17 +163,29 @@ def decode_vless(link):
     }
     return json.dumps(xray_config, indent=4)
 
-link = input("Enter vmess, vless, ss, or trojan link: ")
+def convert (config) :
+    link = config
 
-if link.startswith("vmess://"):
-    config_json = decode_vmess(link)
-elif link.startswith("vless://"):
-    config_json = decode_vless(link)
+    print(link)
 
-print("Generated Xray Configuration:")
-print(config_json)
+    if link.startswith("vmess://"):
+        config_json , config_name = decode_vmess(link)
+    elif link.startswith("vless://"):
+        config_json = decode_vless(link)
+        config_name = link.split('#')[-1]
+    elif link == "False" :  
+        config_json = "False"
+        config_name = "False"
+        
 
-with open("xray_config.json", "w") as f:
-    f.write(config_json)
+    print("Generated Xray Configuration:")
+    print(config_json)
 
-print("Configuration saved to 'xray_config.json'")
+    # with open("xray_config.json", "w") as f:
+    #     f.write(config_json)
+
+    # print("Configuration saved to 'xray_config.json'")
+
+    return config_json , config_name
+
+convert("")

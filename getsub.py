@@ -3,14 +3,28 @@ import base64
 import os
 
 def get_sub ():
-    url = ""
+    url = input("Please Enter your  URL link (sub) : ")
+    sub_name  = input("Please Enter your sub name : ")
     headers = {"user-agent":"v2rayNG"}
     r = requests.get(url=url , headers=headers)
     text = r.text
     decoded_bytes = base64.b64decode(text)
     decoded_str = decoded_bytes.decode('utf-8')
     list_configs = decoded_str.split("\n")
-    print(list_configs)
+    os.mkdir(f"./subs/{sub_name}")
+    for config in list_configs:
+        import convert
+        config_json , config_name = convert.convert(config)
+        if config_name == "False" :
+            break
+        if "/" in config_name :
+            li = config_name.split("/")
+            config_name = ""
+            for l in li  :
+                config_name += l
+
+        with open (f"./subs/{sub_name}/{config_name}.json" , "w") as f :
+            f.writelines(config_json)
 
 
 def list_subs() :
@@ -59,4 +73,4 @@ def list_configs(choose) :
     else :
         print("Not config detected ...")
 
-list_subs()
+get_sub()
