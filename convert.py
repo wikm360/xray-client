@@ -188,4 +188,3 @@ def convert (config) :
 
     return config_json , config_name
 
-convert("")
