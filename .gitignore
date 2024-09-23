@@ -2,3 +2,4 @@
 core/config.json
 xray_config.json
 core/win/config.json
+gui/__pycache__
