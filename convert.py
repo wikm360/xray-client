@@ -69,7 +69,7 @@ def decode_vmess(link):
             "serverName": config.get('sni', ""),
             "fingerprint": config.get('fp', ""),
             "alpn": config.get('alpn', ["http/1.1"]),
-            "allowInsecure": config.get('allowInsecure', False)
+            "allowInsecure": True if config.get('allowInsecure') == 1 else False
         }
 
     xray_config = {
