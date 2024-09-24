@@ -69,6 +69,9 @@ def list_subs():
             print(f"{i} - {sub}")
         print("'add' for add new sub link")
         print("'exit' for back to main menu")
+    else :
+        print("No Sub detected ...")
+        print("'exit' for back to main menu")
     choose = input("Enter your choice (sub name): ").lower()
     if choose == "add":
         get_sub()
@@ -89,7 +92,6 @@ def list_configs(sub_name):
         print(f"List of configs for {sub_name}:")
         with open(path_json+"/list.json", "r", encoding="utf-8") as json_file:
             data = json.load(json_file)
-        print(data)
         for key , value in data.items() :
             print(f"{key} - {value}")
         print("'exit' for back to main menu")
@@ -130,10 +132,21 @@ def main_menu():
         os_sys = "linux"
     elif system_os == "Darwin" :
         os_sys = "macos"
+        
+    
     while True:
+        print(f"## OS detected = {os_sys} ##")
+
+        select_path = f"./core/{os_sys}/select.txt"
+        with open (select_path  , "r") as f :
+            data = f.readlines()
+            select = data[0].split("/")
+            sub_select = select[2]
+            config_select = select[3].split(".")[0]
+
         print("\nMain Menu:")
-        print("1. Add new subscription")
-        print("2. List subscriptions")
+        print(f"1. Add new subscription")
+        print(f"2. List of subscriptions / change sub or config (selected = {sub_select} -> {config_select})")
         print("3. Run")
         print("4. Exit")
         choice = input("Choose an option: ").lower()
