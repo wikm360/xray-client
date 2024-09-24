@@ -54,10 +54,10 @@ def get_sub(left_box,right_box):
         
         directory_path = f"./subs/{sub_name}"
         if os.path.exists(directory_path) and os.path.isdir(directory_path):
-            shutil.rmtree(directory_path)  # حذف پوشه قدیمی
+            shutil.rmtree(directory_path)
             messagebox.showinfo("Success", f"Previous {sub_name} sub deleted ...")
         
-        os.mkdir(directory_path)  # ایجاد پوشه جدید
+        os.mkdir(directory_path)
 
         dict_name = {}
         for count, config in enumerate(list_configs):
