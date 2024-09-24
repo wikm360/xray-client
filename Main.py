@@ -6,6 +6,10 @@ import shutil
 import subprocess
 import signal
 import sys
+import platform
+from pathlib import Path
+
+os_sys = "win"
 
 def signal_handler(sig, frame):
     print('You pressed Ctrl+C! Terminating Xray...')
@@ -25,7 +29,8 @@ def get_sub():
     list_configs = decoded_str.split("\n")
     
     directory_path = f"./subs/{sub_name}"
-    if os.path.exists(directory_path) and os.path.isdir(directory_path):
+    folder_path = Path(directory_path)
+    if folder_path.exists() and folder_path.is_dir() :
         for filename in os.listdir(directory_path):
             file_path = os.path.join(directory_path, filename)
             try:
@@ -37,7 +42,8 @@ def get_sub():
                 print(f"Error {file_path}: {e}")
         print(f"Previous {sub_name} sub deleted ...")
     
-    if not os.path.exists(directory_path):
+    if not folder_path.exists() :
+        print("MAKE FOLDER")
         os.mkdir(directory_path)
     
     count = 0
@@ -76,6 +82,7 @@ def list_subs():
             list_subs()
 
 def list_configs(sub_name):
+    global os_sys
     path_json = f"./subs/{sub_name}"
     list_file = [f for f in os.listdir(path_json) if f.endswith('.json') and f == "list.json"]
     if list_file:
@@ -93,7 +100,7 @@ def list_configs(sub_name):
             try:
                 config_index = int(choose_2)
                 if 0 <= config_index < len(data):
-                    with open("./core/linux/select.txt", "w") as f:
+                    with open(f"./core/{os_sys}/select.txt", "w") as f:
                         f.write(f"./subs/{sub_name}/{config_index}.json")
                     print(f"Config {config_index} selected.")
                 else:
@@ -106,14 +113,23 @@ def list_configs(sub_name):
         print("No configs detected ...")
 
 def run_xray():
-    with open("./core/linux/select.txt", "r") as f:
+    global os_sys
+    with open(f"./core/{os_sys}/select.txt", "r") as f:
         config_path = f.read().strip()
     print(f"Running Xray with config: {config_path}")
-    xray_path = "./core/linux/xray"
+    xray_path = f"./core/{os_sys}/xray"
     subprocess.Popen([xray_path, '-config', config_path])
 
 
 def main_menu():
+    global os_sys
+    system_os = platform.system()
+    if system_os == "Windows" :
+        os_sys = "win"
+    elif system_os == "Linux" :
+        os_sys = "linux"
+    elif system_os == "Darwin" :
+        os_sys = "macos"
     while True:
         print("\nMain Menu:")
         print("1. Add new subscription")
