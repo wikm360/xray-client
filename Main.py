@@ -9,6 +9,7 @@ import sys
 import platform
 from pathlib import Path
 
+sub_select = ""
 os_sys = "win"
 
 def signal_handler(sig, frame):
@@ -62,6 +63,7 @@ def get_sub():
         json.dump(dict_name, f, ensure_ascii=False, indent=4)
 
 def list_subs():
+    global sub_select
     path = "./subs"
     directories = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
     if directories:
@@ -69,7 +71,9 @@ def list_subs():
             print(f"{i} - {sub}")
         print("'add' for add new sub link")
         print("'exit' for back to main menu")
+        print("'del' for deleted a subscription (The selected sub will be deleted)")
     else :
+        print("'add' for add new sub link")
         print("No Sub detected ...")
         print("'exit' for back to main menu")
     choose = input("Enter your choice (sub name): ").lower()
@@ -77,6 +81,20 @@ def list_subs():
         get_sub()
     elif choose == "exit":
         pass  # back to main menu
+    
+    elif choose == "del" :
+        directory_path = f"./subs/{sub_select}"
+        folder_path = Path(directory_path)
+
+        if folder_path.exists() and folder_path.is_dir():
+            try:
+                shutil.rmtree(folder_path)
+                print(f"Previous {sub_select} sub deleted ...")
+            except Exception as e:
+                print(f"Error while deleting {folder_path}: {e}")
+        else:
+            print(f"Folder {sub_select} does not exist.")
+    
     else:
         if choose in directories:
             list_configs(choose)
@@ -135,18 +153,25 @@ def main_menu():
         
     
     while True:
+        global sub_select
+        sub_select = ""
+        config_select = ""
         print(f"## OS detected = {os_sys} ##")
 
         select_path = f"./core/{os_sys}/select.txt"
         with open (select_path  , "r") as f :
             data = f.readlines()
-            select = data[0].split("/")
-            sub_select = select[2]
-            config_select = select[3].split(".")[0]
+            if data :
+                select = data[0].split("/")
+                sub_select = select[2]
+                config_select = select[3].split(".")[0]
 
         print("\nMain Menu:")
         print(f"1. Add new subscription")
-        print(f"2. List of subscriptions / change sub or config (selected = {sub_select} -> {config_select})")
+        if sub_select or config_select :
+            print(f"2. List of subscriptions / change sub or config (selected = {sub_select} -> {config_select})")
+        else : 
+            print(f"2. List of subscriptions / change sub or config")
         print("3. Run")
         print("4. Exit")
         choice = input("Choose an option: ").lower()

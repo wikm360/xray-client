@@ -6,11 +6,11 @@ import urllib.parse
 import re
 
 def split_address_port(address_port):
-    if address_port.startswith('['):  # این بخش برای IPv6 است
+    if address_port.startswith('['):
         match = re.match(r'\[([^\]]+)\]:(\d+)', address_port)
         if match:
-            return match.group(1), match.group(2)  # بازگرداندن آدرس IPv6 و پورت
-    else:  # برای IPv4 یا نام دامنه
+            return match.group(1), match.group(2)
+    else:
         return address_port.split(':')
 
 def extract_name_vmess(config):
