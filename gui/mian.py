@@ -36,7 +36,7 @@ update_btn.place(relx=0.12 ,rely=0.02,relwidth=0.08,relheight=0.07)
 delete_btn = Button(root,text="delete",font=("calibri",10,"bold"),command=lambda:Delete_btn(profile_list),bg=var_json[theme_mode]["delete_btn"],fg=var_json[theme_mode]["text"])
 delete_btn.place(relx=0.22,rely=0.02,relwidth=0.08,relheight=0.07)
 
-start_btn =Button(root,text="off",font=("calibri",10,"bold"),command=lambda:toggle_switch(start_btn),bg="red")
+start_btn =Button(root,text="off",font=("calibri",10,"bold"),command=lambda:toggle_switch(start_btn , consol),bg="red")
 start_btn.place(relx=0.9,rely=0.02,relwidth=0.08,relheight=0.07)
 
 profile_list = Listbox(root,selectbackground="#2d9bf0",font=("Helvetica",20,"bold"),border=5,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"])

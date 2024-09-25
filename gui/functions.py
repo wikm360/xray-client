@@ -9,6 +9,7 @@ import shutil
 import convert
 import json
 import subprocess
+import threading
 
 
 xray_process = None
@@ -197,27 +198,35 @@ def os_det():
         os_sys = "macos"
 
 
-def toggle_switch(switch_button):
+def toggle_switch(switch_button , console):
     if switch_button.config('text')[-1] == 'off':
         switch_button.config(text='on', bg='green')
-        run_xray()
+        run_xray(console)
     else:
         switch_button.config(text='off', bg='red')
         close_xray()
-def run_xray():
+def run_xray(console):
     global xray_process
     os_det()
-    if xray_process is None:  # اگر Xray اجرا نشده باشد
+    
+    if xray_process is None:
         try:
             with open(f"./core/{os_sys}/select.txt", "r") as f:
                 config_path = f.read().strip()
+            
             xray_path = f"./core/{os_sys}/xray"
-            xray_process = subprocess.Popen([xray_path, '-config', config_path])
+            xray_process = subprocess.Popen(
+                [xray_path, '-config', config_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True  # خروجی‌ها به صورت رشته‌ای برگردانده می‌شوند
+            )
             
             messagebox.showinfo("Success", f"Xray is running with config: {config_path}")
+            # شروع خواندن لاگ‌ها
+            threading.Thread(target=read_logs, args=(xray_process, console), daemon=True).start()
         except Exception as e:
             messagebox.showerror("Error", str(e))
-
 def close_xray():
     global xray_process
     xray_process.terminate()
@@ -226,3 +235,11 @@ def close_xray():
 def log(message, console):
     console.insert(END, message + "\n")
     console.see(END)
+
+def read_logs(process, console):
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            log(output.strip(), console)
