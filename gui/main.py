@@ -1,6 +1,7 @@
 from tkinter import *
 from functions import *
 import json
+from tkinter import ttk
 
 
 #Defs
@@ -19,6 +20,8 @@ theme_mode = var_json["mode"]
 
 
 root = Tk()
+# icon_path = os.path.join(os.path.dirname(__file__), 'icon.ico')
+root.iconbitmap("./icon.ico")
 consol_text = StringVar()
 
 sub = StringVar()
@@ -54,7 +57,7 @@ profile_scroll.config(command=profile_list.yview)
 sub_refresh(profile_list)
 
 
-config_list = Listbox(root,selectbackground="#2d9bf0",font=("Helvetica",20,"bold"),border=5,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"])
+config_list = Listbox(root,selectbackground="#2d9bf0",font=("Helvetica",15,"bold"),border=5,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"])
 config_list.place(relx=0.295489891,rely=0.145431145,relwidth=0.6718507,relheight=0.518661519)
 config_list.bind("<<ListboxSelect>>",lambda  event :select_config(event,config_list.get(config_list.curselection()),sub , consol))
 
@@ -63,8 +66,10 @@ config_scroll.place(relx=0.97,rely=0.145431145,relwidth=0.022550544,relheight=0.
 config_list.config(yscrollcommand=config_scroll.set)
 config_scroll.config(command=config_list.yview)
 
-consol = Text(root,bg=var_json[theme_mode]["list_bg"],border=5)
+consol = Text(root,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"],border=5)
 consol.place(relx=0.295489891,rely=0.67431145,relwidth=0.675,relheight=0.2578)
+log("XC(Xray-Client) Ver 2.0" , console=consol)
+log("Created by wikm , 3ircle with ❤️" , console=consol)
 
 consol_scroll = Scrollbar(root,orient=VERTICAL)
 consol_scroll.place(relx=0.97,rely=0.67431145,relwidth=0.022550544,relheight=0.2578)

@@ -2,7 +2,7 @@ from tkinter import messagebox ,END
 import requests
 import os 
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import base64
 import platform
 import shutil
@@ -10,55 +10,64 @@ import convert
 import json
 import subprocess
 import threading
+import pyperclip
 
 
 xray_process = None
 
-offset_x = 50
-offset_y = 50
+offset_x = 0
+offset_y = 0
 url_var = ""
 error_var = ""
-def Import_btn(btn,Toplevel,Button,DISABLED,NORMAL,var_json,theme_mode,Entry,Lable,StringVar,profile_list):
-    global url_var, error_var
-    def close(page):
-        btn.config(state=NORMAL)
-        page.destroy()
 
+def close(page , btn , NORMAL):
+    btn.config(state=NORMAL)
+    page.destroy()
+
+def Import_btn(btn, Toplevel, Button, DISABLED, NORMAL, var_json, theme_mode, Entry, Lable, StringVar, profile_list):
+    global url_var, error_var
     btn.config(state=DISABLED)
     import_page = Toplevel()
     import_page.withdraw()
     import_page.overrideredirect(True)
     import_page.geometry("600x300")
     import_page.config(bg=var_json[theme_mode]["bg"])
+    
     import_page.bind("<Button-1>", start_move)
-    import_page.bind("<B1-Motion>", lambda event:on_move(event,import_page))
+    import_page.bind("<B1-Motion>", lambda event: on_move(event, import_page))
 
     url_var = StringVar()
     error_var = StringVar()
 
-    close_btn = Button(import_page,text="cancel",bg = var_json[theme_mode]["delete_btn"],fg=var_json[theme_mode]["text"],command=lambda:close(import_page))
-    close_btn.place(relx = 0.4,rely=0.5,relwidth=0.3,relheight=0.2)
+    close_btn = Button(import_page, text="cancel", bg=var_json[theme_mode]["delete_btn"], 
+                       fg=var_json[theme_mode]["text"], command=lambda: close(import_page, btn, NORMAL))
+    close_btn.place(relx=0.4, rely=0.5, relwidth=0.3, relheight=0.2)
 
-    import_btn = Button(import_page,text="import",bg = var_json[theme_mode]["import_btn"],fg=var_json[theme_mode]["text"],command=lambda:Import(name_entry.get(),url_entry.get(),profile_list))
-    import_btn.place(relx = 0.01,rely=0.5,relwidth=0.3,relheight=0.2)
+    import_btn = Button(import_page, text="import", bg=var_json[theme_mode]["import_btn"],
+                        fg=var_json[theme_mode]["text"], command=lambda: Import(name_entry.get(), url_entry.get(), profile_list, import_page, btn, NORMAL))
+    import_btn.place(relx=0.01, rely=0.5, relwidth=0.3, relheight=0.2)
 
-    clipboard_btn = Button(import_page,text="P",bg = var_json[theme_mode]["update_btn"],fg=var_json[theme_mode]["text"],command=lambda:Clipboard(url_var))
-    clipboard_btn.place(relx=0.83,rely=0.27,relwidth=0.1,relheight=0.1)
+    clipboard_btn = Button(import_page, text="P", bg=var_json[theme_mode]["update_btn"],
+                           fg=var_json[theme_mode]["text"], command=lambda: Clipboard(url_var))
+    clipboard_btn.place(relx=0.83, rely=0.27, relwidth=0.1, relheight=0.1)
 
-    name_entry = Entry(import_page,bg=var_json[theme_mode]["bg"])
-    name_entry.place(relx = 0.01,rely=0.08,relwidth=0.3,relheight=0.1)
+    name_entry = Entry(import_page, bg=var_json[theme_mode]["bg"])
+    name_entry.place(relx=0.01, rely=0.08, relwidth=0.3, relheight=0.1)
 
-    name_lable = Lable(import_page,text="profile name :",font=("calibri",10,"bold"),bg=var_json[theme_mode]["bg"],fg=var_json[theme_mode]["text"])
-    name_lable.place(relx=0.01,rely=0.005)
+    name_lable = Lable(import_page, text="profile name :", font=("calibri", 10, "bold"),
+                       bg=var_json[theme_mode]["bg"], fg=var_json[theme_mode]["text"])
+    name_lable.place(relx=0.01, rely=0.005)
 
-    url_entry = Entry(import_page,textvariable=url_var)
-    url_entry.place(relx = 0.01,rely=0.27,relwidth=0.8,relheight=0.1)
+    url_entry = Entry(import_page, textvariable=url_var)
+    url_entry.place(relx=0.01, rely=0.27, relwidth=0.8, relheight=0.1)
 
-    url_lable = Lable(import_page,text="profile url :",font=("calibri",10,"bold"),bg=var_json[theme_mode]["bg"],fg=var_json[theme_mode]["text"])
-    url_lable.place(relx = 0.01,rely=0.2)
+    url_lable = Lable(import_page, text="profile url :", font=("calibri", 10, "bold"),
+                      bg=var_json[theme_mode]["bg"], fg=var_json[theme_mode]["text"])
+    url_lable.place(relx=0.01, rely=0.2)
 
-    erroe_lable = Lable(import_page,textvariable=error_var,font=("calibri",10),fg="red",bg=var_json[theme_mode]["bg"])
-    erroe_lable.place(relx = 0.01,rely=0.4)
+    erroe_lable = Lable(import_page, textvariable=error_var, font=("calibri", 10),
+                        fg="red", bg=var_json[theme_mode]["bg"])
+    erroe_lable.place(relx=0.01, rely=0.4)
 
     import_page.deiconify()
 
@@ -82,7 +91,7 @@ def on_move(event,root):
     y = event.y_root - offset_y
     root.geometry(f'+{x}+{y}')
 
-def Import(name,url,profile_list):
+def Import(name,url,profile_list , import_page , btn , NORMAL):
         if not name:
             error_var.set("you have to enter a name")  
         elif not url :
@@ -124,6 +133,7 @@ def Import(name,url,profile_list):
                 
                 messagebox.showinfo("Success", f"Subscription {sub_name} added successfully!")
                 sub_refresh(profile_list)
+                close(import_page , btn , NORMAL)
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
@@ -133,7 +143,8 @@ def Update_btn():
 
 
 def Clipboard(string_var):
-    string_var.set("https://3ircle.com/vpn")
+    copied_text = pyperclip.paste()
+    string_var.set(copied_text)
 
 
 def sub_refresh(profile_list):
@@ -204,33 +215,40 @@ def toggle_switch(switch_button , console):
         run_xray(console)
     else:
         switch_button.config(text='off', bg='red')
-        close_xray()
+        close_xray(console)
+
 def run_xray(console):
     global xray_process
     os_det()
-    
+
     if xray_process is None:
         try:
             with open(f"./core/{os_sys}/select.txt", "r") as f:
                 config_path = f.read().strip()
-            
+
             xray_path = f"./core/{os_sys}/xray"
+
+            creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+
             xray_process = subprocess.Popen(
                 [xray_path, '-config', config_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True  # خروجی‌ها به صورت رشته‌ای برگردانده می‌شوند
+                text=True,
+                creationflags=creation_flags
             )
-            
+
             messagebox.showinfo("Success", f"Xray is running with config: {config_path}")
-            # شروع خواندن لاگ‌ها
+
             threading.Thread(target=read_logs, args=(xray_process, console), daemon=True).start()
         except Exception as e:
             messagebox.showerror("Error", str(e))
-def close_xray():
+
+def close_xray(console):
     global xray_process
     xray_process.terminate()
     xray_process = None
+    log("Xray Closed." , console)
 
 def log(message, console):
     console.insert(END, message + "\n")
