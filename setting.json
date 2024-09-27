@@ -1,5 +1,5 @@
 {"title":"Xray-Client(XC)",
  "mode":"dark_mode",
  "light_mode":{"bg":"#ffffff","import_btn":"#36dd07","delete_btn":"#ff0000","list_bg":"#fefcbf","text":"#000000","update_btn":"#d2e22b"},
- "dark_mode" :{"bg":"#041624","import_btn":"#36dd07","delete_btn":"#ff0000","list_bg":"#202020","text":"#000000","update_btn":"#d2e22b"}
+ "dark_mode" :{"bg":"#041624","import_btn":"#36dd07","delete_btn":"#ff0000","list_bg":"#202020","text":"#ffffff","update_btn":"#d2e22b"}
    }
