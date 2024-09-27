@@ -11,7 +11,7 @@ import json
 import subprocess
 import threading
 import pyperclip
-
+from pathlib import Path
 
 xray_process = None
 
@@ -24,7 +24,7 @@ def close(page , btn , NORMAL):
     btn.config(state=NORMAL)
     page.destroy()
 
-def Import_btn(btn, Toplevel, Button, DISABLED, NORMAL, var_json, theme_mode, Entry, Lable, StringVar, profile_list):
+def Import_btn(btn, Toplevel, Button, DISABLED, NORMAL, var_json, theme_mode, Entry, Lable, StringVar, profile_list , console):
     global url_var, error_var
     btn.config(state=DISABLED)
     import_page = Toplevel()
@@ -44,21 +44,21 @@ def Import_btn(btn, Toplevel, Button, DISABLED, NORMAL, var_json, theme_mode, En
     close_btn.place(relx=0.4, rely=0.5, relwidth=0.3, relheight=0.2)
 
     import_btn = Button(import_page, text="import", bg=var_json[theme_mode]["import_btn"],
-                        fg=var_json[theme_mode]["text"], command=lambda: Import(name_entry.get(), url_entry.get(), profile_list, import_page, btn, NORMAL))
+                        fg=var_json[theme_mode]["text"], command=lambda: Import(name_entry.get(), url_entry.get(), profile_list, import_page, btn, NORMAL , console))
     import_btn.place(relx=0.01, rely=0.5, relwidth=0.3, relheight=0.2)
 
     clipboard_btn = Button(import_page, text="P", bg=var_json[theme_mode]["update_btn"],
                            fg=var_json[theme_mode]["text"], command=lambda: Clipboard(url_var))
     clipboard_btn.place(relx=0.83, rely=0.27, relwidth=0.1, relheight=0.1)
 
-    name_entry = Entry(import_page, bg=var_json[theme_mode]["bg"])
+    name_entry = Entry(import_page,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"],border=0)
     name_entry.place(relx=0.01, rely=0.08, relwidth=0.3, relheight=0.1)
 
     name_lable = Lable(import_page, text="profile name :", font=("calibri", 10, "bold"),
                        bg=var_json[theme_mode]["bg"], fg=var_json[theme_mode]["text"])
     name_lable.place(relx=0.01, rely=0.005)
 
-    url_entry = Entry(import_page, textvariable=url_var)
+    url_entry = Entry(import_page, textvariable=url_var ,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"],border=0)
     url_entry.place(relx=0.01, rely=0.27, relwidth=0.8, relheight=0.1)
 
     url_lable = Lable(import_page, text="profile url :", font=("calibri", 10, "bold"),
@@ -78,8 +78,31 @@ def add_list(List:list,list_box):
         list_box.insert(c,i)
         c +=1
     
-def Delete_btn(list_box):
-    print(list_box)
+def Delete_btn(list_box ,  console , profile_list , config_list):
+    selection = list_box.curselection()
+    if selection :
+        sub_name = list_box.get(selection)
+        log(f"deleting {sub_name} ..." , console)
+        directory_path = f"./subs/{sub_name}"
+        folder_path = Path(directory_path)
+        if folder_path.exists() and folder_path.is_dir():
+            for filename in os.listdir(directory_path):
+                file_path = os.path.join(directory_path, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    log(f"Error {file_path}: {e}" , console)
+            
+            shutil.rmtree(directory_path)
+            
+            config_refresh(config_list)
+            log(f"Previous {sub_name} sub deleted", console)
+    else:
+        log("Please first select one subscription", console)
+    sub_refresh(profile_list)
 
 def start_move(event):
     global offset_x, offset_y
@@ -91,55 +114,75 @@ def on_move(event,root):
     y = event.y_root - offset_y
     root.geometry(f'+{x}+{y}')
 
-def Import(name,url,profile_list , import_page , btn , NORMAL):
+def get(name , url) :
+    sub_url = url
+    sub_name = name
+
+    if not sub_url or not sub_name:
+        messagebox.showwarning("Warning", "Please fill in all fields.")
+        return
+
+    headers = {"user-agent": "v2rayNG"}
+    r = requests.get(url=sub_url, headers=headers)
+    text = r.text
+    decoded_bytes = base64.b64decode(text)
+    decoded_str = decoded_bytes.decode('utf-8')
+    list_configs = decoded_str.split("\n")
+    
+    directory_path = f"./subs/{sub_name}"
+    if os.path.exists(directory_path) and os.path.isdir(directory_path):
+        shutil.rmtree(directory_path)
+        messagebox.showinfo("Success", f"Previous {sub_name} sub deleted ...")
+    
+    os.mkdir(directory_path)
+
+    dict_name = {}
+    for count, config in enumerate(list_configs):
+        if config.strip():
+            config_json, config_name = convert.convert(config)
+            if config_name != "False":
+                with open(f"./subs/{sub_name}/{count}.json", "w") as f:
+                    f.write(config_json)
+                dict_name[count] = config_name
+    
+    with open(f"./subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
+        json.dump(dict_name, f, ensure_ascii=False, indent=4)
+    with open (f"./subs/{sub_name}/url.txt" ,"w" , encoding="utf-8")  as f :
+        f.writelines(url)
+
+
+
+def Import(name,url,profile_list , import_page , btn , NORMAL , console):
         if not name:
             error_var.set("you have to enter a name")  
         elif not url :
             error_var.set("you have to enter a url")    
         else :
-            sub_url = url
-            sub_name = name
-
-            if not sub_url or not sub_name:
-                messagebox.showwarning("Warning", "Please fill in all fields.")
-                return
-
-            headers = {"user-agent": "v2rayNG"}
             try:
-                r = requests.get(url=sub_url, headers=headers)
-                text = r.text
-                decoded_bytes = base64.b64decode(text)
-                decoded_str = decoded_bytes.decode('utf-8')
-                list_configs = decoded_str.split("\n")
-                
-                directory_path = f"./subs/{sub_name}"
-                if os.path.exists(directory_path) and os.path.isdir(directory_path):
-                    shutil.rmtree(directory_path)
-                    messagebox.showinfo("Success", f"Previous {sub_name} sub deleted ...")
-                
-                os.mkdir(directory_path)
-
-                dict_name = {}
-                for count, config in enumerate(list_configs):
-                    if config.strip():
-                        config_json, config_name = convert.convert(config)
-                        if config_name != "False":
-                            with open(f"./subs/{sub_name}/{count}.json", "w") as f:
-                                f.write(config_json)
-                            dict_name[count] = config_name
-                
-                with open(f"./subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
-                    json.dump(dict_name, f, ensure_ascii=False, indent=4)
-                
-                messagebox.showinfo("Success", f"Subscription {sub_name} added successfully!")
+                get(name , url)
+                log(f"Subscription {name} added successfully!" , console)
                 sub_refresh(profile_list)
                 close(import_page , btn , NORMAL)
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
 
-def Update_btn():
-    pass
+def Update_btn(list_box ,  console , profile_list , config_list):
+    selection = list_box.curselection()
+    if selection :
+        sub_name = list_box.get(selection)
+        path = f"./subs/{sub_name}/url.txt"
+        with open (path,"r") as f :
+            url_list = f.readlines()
+            url = url_list[0]
+        try:
+            get(sub_name , url)
+            sub_refresh(profile_list)
+            config_refresh(config_list)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+    else :
+        log("Please select one subsciption" , console)
 
 
 def Clipboard(string_var):
@@ -159,6 +202,9 @@ def sub_refresh(profile_list):
     profile_list.delete(0, 'end')
     add_list(l, profile_list)
 
+def config_refresh (config_list) :
+    config_list.delete(0, END)
+
 def list_configs(event,sub,config_listbox,sub_var):
 
     sub_var.set(sub)
@@ -172,7 +218,7 @@ def list_configs(event,sub,config_listbox,sub_var):
         with open(path_json, "r", encoding="utf-8") as json_file:
             data = json.load(json_file)
         
-        config_listbox.delete(0, END)  # پاک کردن لیست قبلی
+        config_listbox.delete(0, END)
         for key, value in data.items():
             config_listbox.insert(END, f"{key} - {value}")
     else:

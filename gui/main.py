@@ -20,8 +20,8 @@ theme_mode = var_json["mode"]
 
 
 root = Tk()
-# icon_path = os.path.join(os.path.dirname(__file__), 'icon.ico')
-root.iconbitmap("./icon.ico")
+#root.iconbitmap("icon.ico")
+
 consol_text = StringVar()
 
 sub = StringVar()
@@ -30,13 +30,13 @@ root.title(var_json["title"])
 root.config(bg=var_json[theme_mode]["bg"])
 
 
-import_btn = Button(root,text="import",font=("calibri",10,"bold"),command=lambda:Import_btn(import_btn,Toplevel,Button,DISABLED,NORMAL,var_json,theme_mode,Entry,Label,StringVar,profile_list),bg=var_json[theme_mode]["import_btn"],fg=var_json[theme_mode]["text"])
+import_btn = Button(root,text="import",font=("calibri",10,"bold"),command=lambda:Import_btn(import_btn,Toplevel,Button,DISABLED,NORMAL,var_json,theme_mode,Entry,Label,StringVar,profile_list , consol),bg=var_json[theme_mode]["import_btn"],fg=var_json[theme_mode]["text"])
 import_btn.place(relx=0.02,rely=0.02,relwidth=0.08,relheight=0.07)
 
-update_btn = Button(root,text="update",font=("calibri",10,"bold"),command=lambda:Update_btn(),bg=var_json[theme_mode]["update_btn"],fg=var_json[theme_mode]["text"])
+update_btn = Button(root,text="update",font=("calibri",10,"bold"),command=lambda:Update_btn(profile_list ,  consol , profile_list , config_list),bg=var_json[theme_mode]["update_btn"],fg=var_json[theme_mode]["text"])
 update_btn.place(relx=0.12 ,rely=0.02,relwidth=0.08,relheight=0.07)
 
-delete_btn = Button(root,text="delete",font=("calibri",10,"bold"),command=lambda:Delete_btn(profile_list),bg=var_json[theme_mode]["delete_btn"],fg=var_json[theme_mode]["text"])
+delete_btn = Button(root,text="delete",font=("calibri",10,"bold"),command=lambda:Delete_btn(profile_list ,consol, profile_list , config_list),bg=var_json[theme_mode]["delete_btn"],fg=var_json[theme_mode]["text"])
 delete_btn.place(relx=0.22,rely=0.02,relwidth=0.08,relheight=0.07)
 
 start_btn =Button(root,text="off",font=("calibri",10,"bold"),command=lambda:toggle_switch(start_btn , consol),bg="red")
@@ -68,7 +68,7 @@ config_scroll.config(command=config_list.yview)
 
 consol = Text(root,bg=var_json[theme_mode]["list_bg"],fg=var_json[theme_mode]["text"],border=5)
 consol.place(relx=0.295489891,rely=0.67431145,relwidth=0.675,relheight=0.2578)
-log("XC(Xray-Client) Ver 2.0" , console=consol)
+log("XC(Xray-Client) Ver 2.2" , console=consol)
 log("Created by wikm , 3ircle with ❤️" , console=consol)
 
 consol_scroll = Scrollbar(root,orient=VERTICAL)
