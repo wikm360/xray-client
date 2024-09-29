@@ -63,6 +63,13 @@ def decode_vmess(link):
             }
         }
 
+    elif config['net'] == "splithttp":
+        stream_settings["splitHttpSettings"] = {
+            "Host": config.get('host', [""]),
+            "path": config.get('path', ["/"]),
+
+        }
+
     if config.get('tls') == "tls":
         stream_settings["security"] = "tls"
         stream_settings["tlsSettings"] = {
@@ -118,6 +125,15 @@ def decode_vless(link):
                         "Pragma": query_params.get('pragma', "no-cache")
                     }
                 }
+            }
+        }
+
+    elif stream_settings["network"] == "ws":
+        stream_settings["wsSettings"] = {
+            "path": query_params.get('path', ["/"])[0],
+            "headers": {
+                "Host": query_params.get('host', [""])[0],
+                "User-Agent": query_params.get('ua', [""])[0]
             }
         }
 

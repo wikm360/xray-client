@@ -6,3 +6,4 @@ gui/__pycache__
 test.py
 test3.py
 gui/test_2.py
+core/linux/select.txt

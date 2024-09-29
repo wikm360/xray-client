@@ -1,8 +1,6 @@
 from tkinter import *
 from functions import *
 import json
-from tkinter import ttk
-
 
 #Defs
 def on_select(event, profile_list, config_list, sub):
@@ -20,7 +18,8 @@ theme_mode = var_json["mode"]
 
 
 root = Tk()
-#root.iconbitmap("icon.ico")
+# print(os.path.isfile("./gui/XC.ico"))
+# root.iconbitmap("./gui/XC.ico")
 
 consol_text = StringVar()
 
