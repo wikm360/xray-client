@@ -11,7 +11,7 @@ from tkinter import *
 
 
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"/home/ali/Documents/gui_xcore/build/assets/frame0")
+ASSETS_PATH = OUTPUT_PATH / Path(r"/home/ali/Documents/gui_xcore/build/assets/frame0") # /home/wikmgg/Documents/GitHub/xray-client/gui/assets/frame0
 
 
 def relative_to_assets(path: str) -> Path:
