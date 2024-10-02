@@ -18,8 +18,12 @@ theme_mode = var_json["mode"]
 
 
 root = Tk()
+<<<<<<< Updated upstream
 # print(os.path.isfile("./gui/XC.ico"))
 # root.iconbitmap("./gui/XC.ico")
+=======
+# root.iconbitmap("XC.ico")
+>>>>>>> Stashed changes
 
 consol_text = StringVar()
 

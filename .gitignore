@@ -6,4 +6,8 @@ gui/__pycache__
 test.py
 test3.py
 gui/test_2.py
+<<<<<<< Updated upstream
 core/linux/select.txt
+=======
+gui/test3.py
+>>>>>>> Stashed changes
