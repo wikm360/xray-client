@@ -8,6 +8,7 @@ import requests
 import base64
 import shutil
 import convert
+from pathlib import Path
 
 # variable defenition :
 xray_process = None
@@ -137,6 +138,33 @@ def Update_btn(list_box ,  console , profile_list , config_list):
             messagebox.showerror("Error", str(e))
     else :
         log("Please select one subsciption" , console)
+
+def Delete_btn(list_box ,  console , profile_list , config_list):
+    selection = list_box.curselection()
+    if selection :
+        sub_name = list_box.get(selection)
+        log(f"deleting {sub_name} ..." , console)
+        directory_path = f"./subs/{sub_name}"
+        folder_path = Path(directory_path)
+        if folder_path.exists() and folder_path.is_dir():
+            for filename in os.listdir(directory_path):
+                file_path = os.path.join(directory_path, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    log(f"Error {file_path}: {e}" , console)
+            
+            shutil.rmtree(directory_path)
+            
+            config_refresh(config_list)
+            log(f"Previous {sub_name} sub deleted", console)
+    else:
+        log("Please first select one subscription", console)
+    sub_refresh(profile_list)
+
 
 def config_refresh (config_list) :
     config_list.delete(0, END)

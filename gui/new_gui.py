@@ -41,7 +41,7 @@ update_btn = Button(image=button_image_2, borderwidth=0, highlightthickness=0, c
 update_btn.place(x=156.0, y=23.0, width=94.0, height=39.0)
 
 button_image_3 = PhotoImage(file=relative_to_assets("button_3.png"))
-remove_btn = Button(image=button_image_3, borderwidth=0, highlightthickness=0, command=lambda: print("button_3 clicked"), relief="flat")
+remove_btn = Button(image=button_image_3, borderwidth=0, highlightthickness=0, command=lambda:Delete_btn(profile_list ,console, profile_list , config_list), relief="flat")
 remove_btn.place(x=275.0, y=23.0, width=94.0, height=39.0)
 
 
