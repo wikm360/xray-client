@@ -11,6 +11,7 @@ import convert
 from pathlib import Path
 
 # variable defenition :
+os_sys = ""
 xray_process = None
 sub = ""
 
@@ -31,6 +32,7 @@ def os_det():
         os_sys = "linux"
     elif system_os == "Darwin" :
         os_sys = "macos"
+    return os_sys
 
 def config_selected(config_list, console):
     selection = config_list.curselection()
@@ -122,6 +124,11 @@ def get(name , url) :
                     f.write(config_json)
                 dict_name[count] = config_name
 
+    with open(f"./subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
+        json.dump(dict_name, f, ensure_ascii=False, indent=4)
+    with open (f"./subs/{sub_name}/url.txt" ,"w" , encoding="utf-8")  as f :
+        f.writelines(url)
+
 def Update_btn(list_box ,  console , profile_list , config_list):
     selection = list_box.curselection()
     if selection :
@@ -198,10 +205,6 @@ def run_xray(console):
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-# def close_xray():
-#     global xray_process
-#     xray_process.terminate()
-#     xray_process = None
 def close_xray():
     global xray_process
     if xray_process:

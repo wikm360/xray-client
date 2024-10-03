@@ -23,6 +23,9 @@ def on_close():
         window.destroy()
 
 window = Tk()
+window.title("XC(Xray-Cient)")
+#windows icon
+window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
 
 window.geometry("836x513")
 window.configure(bg="#0C0C0C")
