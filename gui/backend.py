@@ -47,8 +47,8 @@ def config_selected(config_list, console):
         os_det()
         config_num = config_name.split("-")[0]
         config_index = int(config_num)
-        with open(f"./core/{os_sys}/select.txt", "w") as f:
-            f.write(f"./subs/{profile_name}/{config_index}.json")
+        with open(f"../core/{os_sys}/select.txt", "w") as f:
+            f.write(f"../subs/{profile_name}/{config_index}.json")
         log(f"Config {config_index} selected.", console)
     except Exception as e:
         log(f"Error selecting config: {str(e)}", console)
@@ -62,7 +62,7 @@ def profile_selected(profile_list, config_list, console):
     profile_name = profile_list.get(selection)
     set_sub(profile_name)
 
-    path_json = f"./subs/{profile_name}/list.json"
+    path_json = f"../subs/{profile_name}/list.json"
     if os.path.exists(path_json):
         with open(path_json, "r", encoding="utf-8") as json_file:
             data = json.load(json_file)
@@ -83,7 +83,7 @@ def log(message, console):
 
 def sub_refresh(profile_list):
     l = []
-    path = "./subs"
+    path = "../subs"
     directories = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
     
     if directories:
@@ -108,7 +108,7 @@ def get(name , url) :
     decoded_str = decoded_bytes.decode('utf-8')
     list_configs = decoded_str.split("\n")
     
-    directory_path = f"./subs/{sub_name}"
+    directory_path = f"../subs/{sub_name}"
     if os.path.exists(directory_path) and os.path.isdir(directory_path):
         shutil.rmtree(directory_path)
         messagebox.showinfo("Success", f"Previous {sub_name} sub deleted ...")
@@ -120,20 +120,20 @@ def get(name , url) :
         if config.strip():
             config_json, config_name = convert.convert(config)
             if config_name != "False":
-                with open(f"./subs/{sub_name}/{count}.json", "w") as f:
+                with open(f"../subs/{sub_name}/{count}.json", "w") as f:
                     f.write(config_json)
                 dict_name[count] = config_name
 
-    with open(f"./subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
+    with open(f"../subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
         json.dump(dict_name, f, ensure_ascii=False, indent=4)
-    with open (f"./subs/{sub_name}/url.txt" ,"w" , encoding="utf-8")  as f :
+    with open (f"../subs/{sub_name}/url.txt" ,"w" , encoding="utf-8")  as f :
         f.writelines(url)
 
 def Update_btn(list_box ,  console , profile_list , config_list):
     selection = list_box.curselection()
     if selection :
         sub_name = list_box.get(selection)
-        path = f"./subs/{sub_name}/url.txt"
+        path = f"../subs/{sub_name}/url.txt"
         with open (path,"r") as f :
             url_list = f.readlines()
             url = url_list[0]
@@ -151,7 +151,7 @@ def Delete_btn(list_box ,  console , profile_list , config_list):
     if selection :
         sub_name = list_box.get(selection)
         log(f"deleting {sub_name} ..." , console)
-        directory_path = f"./subs/{sub_name}"
+        directory_path = f"../subs/{sub_name}"
         folder_path = Path(directory_path)
         if folder_path.exists() and folder_path.is_dir():
             for filename in os.listdir(directory_path):
@@ -182,10 +182,10 @@ def run_xray(console):
 
     if xray_process is None:
         try:
-            with open(f"./core/{os_sys}/select.txt", "r") as f:
+            with open(f"../core/{os_sys}/select.txt", "r") as f:
                 config_path = f.read().strip()
 
-            xray_path = f"./core/{os_sys}/xray"
+            xray_path = f"../core/{os_sys}/xray"
 
             creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
