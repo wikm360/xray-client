@@ -9,11 +9,52 @@ import base64
 import shutil
 import convert
 from pathlib import Path
-
+from threading import Thread
+import re
 # variable defenition :
 os_sys = ""
 xray_process = None
 sub = ""
+
+def is_ubuntu():
+    try:
+        with open("/etc/os-release") as f:
+            os_info = f.read()
+            if "Ubuntu" in os_info:
+                return True
+    except FileNotFoundError:
+        return False
+    return False
+
+def remove_emojis(text):
+
+    emoji_pattern = re.compile(
+        "["
+        u"\U0001F600-\U0001F64F"
+        u"\U0001F300-\U0001F5FF"
+        u"\U0001F680-\U0001F6FF"
+        u"\U0001F1E0-\U0001F1FF"
+        u"\U00002700-\U000027BF"
+        u"\U0001F900-\U0001F9FF"
+        u"\U0001FA70-\U0001FAFF"
+        u"\U00002500-\U00002BEF"
+        u"\U0001F7E0-\U0001F7FF" 
+        "]+", flags=re.UNICODE
+    )
+    return emoji_pattern.sub(r'', text)
+
+
+
+
+
+def add_config(List,items):
+    if is_ubuntu():
+        for key,value in items:
+            List.insert(END, remove_emojis(f"{key} - {value}"))
+    else:
+        for key,value in items:
+            List.insert(END, f"{key} - {value}")
+
 
 def add_list(List:list,list_box):
     for i in List:
@@ -47,8 +88,8 @@ def config_selected(config_list, console):
         os_det()
         config_num = config_name.split("-")[0]
         config_index = int(config_num)
-        with open(f"../core/{os_sys}/select.txt", "w") as f:
-            f.write(f"../subs/{profile_name}/{config_index}.json")
+        with open(f"./core/{os_sys}/select.txt", "w") as f:
+            f.write(f"./subs/{profile_name}/{config_index}.json")
         log(f"Config {config_index} selected.", console)
     except Exception as e:
         log(f"Error selecting config: {str(e)}", console)
@@ -57,19 +98,19 @@ def profile_selected(profile_list, config_list, console):
     selection = profile_list.curselection()
     if not selection:
         log("No profile selected.", console)
-        return
+        # return
 
     profile_name = profile_list.get(selection)
     set_sub(profile_name)
 
-    path_json = f"../subs/{profile_name}/list.json"
+    path_json = f"./subs/{profile_name}/list.json"
     if os.path.exists(path_json):
         with open(path_json, "r", encoding="utf-8") as json_file:
             data = json.load(json_file)
 
         config_list.delete(0, END)
-        for key, value in data.items():
-            config_list.insert(END, f"{key} - {value}")
+        t = Thread(target=add_config,args=(config_list,data.items()))
+        t.start()
     else:
         messagebox.showinfo("Info", "No configs detected.")
         log("No configs detected for the selected profile.", console)
@@ -83,9 +124,12 @@ def log(message, console):
 
 def sub_refresh(profile_list):
     l = []
-    path = "../subs"
-    directories = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
-    
+    path = "./subs"
+
+    try:
+        directories = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
+    except:
+        directories = []
     if directories:
         for sub in directories:
             l.append(sub)

@@ -25,11 +25,27 @@ def on_close():
 window = Tk()
 window.title("XC(Xray-Cient)")
 #windows icon
-window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
+# window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
 
 window.geometry("836x513")
 window.configure(bg="#0C0C0C")
 window.resizable(False, False)
+
+import_page = Toplevel()
+import_page.geometry("600x300")
+import_page.config(bg="#0C0C0C")
+import_page.title("import profile")
+
+
+
+
+
+
+
+
+
+
+
 
 canvas = Canvas(window, bg="#0C0C0C", height=513, width=836, bd=0, highlightthickness=0, relief="ridge")
 canvas.place(x=0, y=0)
