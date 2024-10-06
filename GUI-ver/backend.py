@@ -139,7 +139,7 @@ def profile_selected(profile_list, config_list, console):
     selection = profile_list.curselection()
     if not selection:
         log("No profile selected.", console)
-        # return
+        return
 
     profile_name = profile_list.get(selection)
     set_sub(profile_name)
@@ -186,7 +186,7 @@ def get(name , url) :
         messagebox.showwarning("Warning", "Please fill in all fields.")
         return
 
-    headers = {"user-agent": "v2rayNG"}
+    headers = {"user-agent": "XC(Xray-Client)"}
     r = requests.get(url=sub_url, headers=headers)
     text = r.text
     decoded_bytes = base64.b64decode(text)
@@ -263,7 +263,7 @@ def config_refresh (config_list) :
 
 def run_xray(console):
     global xray_process
-    os_det()  # Assuming this sets the correct OS settings
+    os_det()
 
     if xray_process is None:
         try:

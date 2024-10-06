@@ -29,7 +29,11 @@ def on_close():
 window = Tk()
 window.title("XC(Xray-Cient)")
 #windows icon
-# window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
+os_sys = os_det()
+if os_sys == "win" :
+    window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
+elif os_sys == "linux" :
+    window.iconphoto(True, str(ASSETS_PATH) + "/icon.png")
 
 window.geometry("836x513")
 window.configure(bg="#0C0C0C")
