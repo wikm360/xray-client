@@ -1,6 +1,6 @@
 import platform
 import os
-from tkinter import END,messagebox
+from tkinter import messagebox,DISABLED,NORMAL,END
 import json
 import subprocess
 import threading
@@ -11,10 +11,47 @@ import convert
 from pathlib import Path
 from threading import Thread
 import re
+import pyperclip
+
 # variable defenition :
 os_sys = ""
 xray_process = None
 sub = ""
+
+
+def Import(name_var,url_var,profile_list,page,btn,console):
+        name = name_var.get()
+        url = url_var.get()
+        if not name:
+                log("you have to enter a name",console)  
+        elif not url :
+                log("you have to enter a url",console)    
+        else :
+            try:
+                get(name , url)
+                log(f"Subscription {name} added successfully!" , console)
+                sub_refresh(profile_list)
+                on_close_import(page,btn,url_var,name_var)
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+
+
+
+
+
+
+
+
+
+
+
+def on_close_import(page,btn,url_var,name_var):
+    page.withdraw()
+    btn.config(state=NORMAL)
+    url_var.set("")
+    name_var.set("")
+
 
 def is_ubuntu():
     try:
@@ -43,9 +80,13 @@ def remove_emojis(text):
     )
     return emoji_pattern.sub(r'', text)
 
+def Import_btn(page,btn):
+    btn.config(state=DISABLED)
+    page.deiconify()
 
-
-
+def Clipboard(string_var):
+    copied_text = pyperclip.paste()
+    string_var.set(copied_text)
 
 def add_config(List,items):
     if is_ubuntu():
@@ -152,7 +193,7 @@ def get(name , url) :
     decoded_str = decoded_bytes.decode('utf-8')
     list_configs = decoded_str.split("\n")
     
-    directory_path = f"../subs/{sub_name}"
+    directory_path = f"./subs/{sub_name}"
     if os.path.exists(directory_path) and os.path.isdir(directory_path):
         shutil.rmtree(directory_path)
         messagebox.showinfo("Success", f"Previous {sub_name} sub deleted ...")
@@ -164,20 +205,20 @@ def get(name , url) :
         if config.strip():
             config_json, config_name = convert.convert(config)
             if config_name != "False":
-                with open(f"../subs/{sub_name}/{count}.json", "w") as f:
+                with open(f"./subs/{sub_name}/{count}.json", "w") as f:
                     f.write(config_json)
                 dict_name[count] = config_name
 
-    with open(f"../subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
+    with open(f"./subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
         json.dump(dict_name, f, ensure_ascii=False, indent=4)
-    with open (f"../subs/{sub_name}/url.txt" ,"w" , encoding="utf-8")  as f :
+    with open (f"./subs/{sub_name}/url.txt" ,"w" , encoding="utf-8")  as f :
         f.writelines(url)
 
 def Update_btn(list_box ,  console , profile_list , config_list):
     selection = list_box.curselection()
     if selection :
         sub_name = list_box.get(selection)
-        path = f"../subs/{sub_name}/url.txt"
+        path = f"./subs/{sub_name}/url.txt"
         with open (path,"r") as f :
             url_list = f.readlines()
             url = url_list[0]
@@ -195,7 +236,7 @@ def Delete_btn(list_box ,  console , profile_list , config_list):
     if selection :
         sub_name = list_box.get(selection)
         log(f"deleting {sub_name} ..." , console)
-        directory_path = f"../subs/{sub_name}"
+        directory_path = f"./subs/{sub_name}"
         folder_path = Path(directory_path)
         if folder_path.exists() and folder_path.is_dir():
             for filename in os.listdir(directory_path):
@@ -226,10 +267,10 @@ def run_xray(console):
 
     if xray_process is None:
         try:
-            with open(f"../core/{os_sys}/select.txt", "r") as f:
+            with open(f"./core/{os_sys}/select.txt", "r") as f:
                 config_path = f.read().strip()
 
-            xray_path = f"../core/{os_sys}/xray"
+            xray_path = f"./core/{os_sys}/xray"
 
             creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 

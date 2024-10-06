@@ -1,9 +1,9 @@
- # /home/wikmgg/Documents/GitHub/xray-client/gui/assets/frame0
 from pathlib import Path
 from tkinter import *
 from backend import *
 
 OUTPUT_PATH = Path(__file__).parent
+print(OUTPUT_PATH)
 ASSETS_PATH = OUTPUT_PATH / Path(r"./assets/frame0")
 
 def relative_to_assets(path: str) -> Path:
@@ -22,6 +22,10 @@ def on_close():
         close_xray()
         window.destroy()
 
+
+#================= main page setting ==============#
+
+
 window = Tk()
 window.title("XC(Xray-Cient)")
 #windows icon
@@ -31,28 +35,55 @@ window.geometry("836x513")
 window.configure(bg="#0C0C0C")
 window.resizable(False, False)
 
+
+#================= import page ===================#
+
+
 import_page = Toplevel()
 import_page.geometry("600x300")
 import_page.config(bg="#0C0C0C")
 import_page.title("import profile")
+import_page.resizable(False, False)
 
 
+name_label = Label(import_page,text="PROFILE NAME :",font=("calibri",15,"bold"),bg="#0C0C0C",fg="#ffffff")
+name_label.place(x=12,y=12)
 
 
+name_var = StringVar()
+name_box = Entry(import_page,textvariable=name_var)
+name_box.place(x=12,y=45,width=260,height=32)
+
+url_label = Label(import_page,text="URL :",font=("calibri",15,"bold"),bg="#0C0C0C",fg="#ffffff")
+url_label.place(x=12,y=120)
+
+url_var = StringVar()
+url_box = Entry(import_page,textvariable=url_var)
+url_box.place(x=12,y=153,width=520,height=32)
+
+paste_img = PhotoImage(file=relative_to_assets("paste_btn.png"))
+paste_btn = Button(import_page,image=paste_img, borderwidth=0, highlightthickness=0, command=lambda: Clipboard(url_var), relief="flat")
+paste_btn.place(x=536,y=153,width=32,height=32)
 
 
+button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
+import_btn2 = Button(import_page,image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: Import(name_var,url_box,profile_list,import_page,import_btn,console), relief="flat")
+import_btn2.place(x=12, y=200, width=94, height=39)
+
+cancel_img = PhotoImage(file=relative_to_assets("button_4.png"))
+cancel_btn = Button(import_page,image=cancel_img, borderwidth=0, highlightthickness=0, command=lambda :on_close_import(import_page,import_btn,url_var,name_var), relief="flat")
+cancel_btn.place(x=150, y=200, width=94, height=39)
+
+import_page.withdraw()
 
 
-
-
-
+#================= main elements setup ===================#
 
 canvas = Canvas(window, bg="#0C0C0C", height=513, width=836, bd=0, highlightthickness=0, relief="ridge")
 canvas.place(x=0, y=0)
 
-# Buttons setup
-button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-import_btn = Button(image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: print("button_1 clicked"), relief="flat")
+
+import_btn = Button(window,image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: Import_btn(import_page,import_btn), relief="flat")
 import_btn.place(x=37.0, y=23.0, width=94.0, height=39.0)
 
 button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
@@ -113,5 +144,7 @@ log("Created by wikm, 3ircle with ❤️", console=console)
 
 sub_refresh(profile_list)
 
+
 window.protocol("WM_DELETE_WINDOW", on_close)
+import_page.protocol("WM_DELETE_WINDOW", func=lambda :on_close_import(import_page,import_btn,url_var,name_var))
 window.mainloop()
