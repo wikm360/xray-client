@@ -30,8 +30,8 @@ window = Tk()
 window.title("XC(Xray-Cient)")
 #windows icon
 os_sys = os_det()
-# if os_sys == "win" :
-#     window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
+if os_sys == "win" :
+    window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
 # elif os_sys == "linux" :
 #     window.iconphoto(True, str(ASSETS_PATH) + "/icon.png")
 
@@ -142,7 +142,7 @@ config_scroll.config(command=config_list.yview)
 config_list.bind("<<ListboxSelect>>", lambda event: config_selected(config_list, console))
 
 
-
+start_log_processing(console)
 log("XC(Xray-Client) Ver 3.0", console=console)
 log("Created by wikm, 3ircle with ❤️", console=console)
 

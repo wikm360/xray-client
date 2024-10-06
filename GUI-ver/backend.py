@@ -12,6 +12,8 @@ from pathlib import Path
 from threading import Thread
 import re
 import pyperclip
+import time
+import queue
 
 # variable defenition :
 os_sys = ""
@@ -157,12 +159,6 @@ def profile_selected(profile_list, config_list, console):
         log("No configs detected for the selected profile.", console)
 
 
-def log(message, console):
-    console.config(state="normal")
-    console.insert(END, message + "\n")
-    console.config(state="disabled")
-    console.see(END)
-
 def sub_refresh(profile_list):
     l = []
     path = "./subs"
@@ -296,6 +292,27 @@ def close_xray():
         xray_process.terminate()
         xray_process = None
         messagebox.showinfo("Xray", "Xray has been stopped.")
+
+log_queue = queue.Queue()
+
+def log(message, console):
+    log_queue.put(message)
+
+def process_logs(console):
+    while True:
+        try:
+            message = log_queue.get_nowait()
+        except queue.Empty:
+            time.sleep(0.1)
+        else:
+            console.config(state=NORMAL)
+            console.insert(END, message + "\n")
+            console.config(state=DISABLED)
+            console.see(END)
+        console.update()
+
+def start_log_processing(console):
+    threading.Thread(target=process_logs, args=(console,), daemon=True).start()
 
 def read_logs(process, console):
     while True:
