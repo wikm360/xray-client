@@ -16,17 +16,22 @@ def split_address_port(address_port):
 def extract_name_vmess(config):
     return config.get('ps', "Unnamed Config")
 
+import base64
+import json
+
 def decode_vmess(link):
     link = link.replace("vmess://", "")
     decoded_bytes = base64.b64decode(link)
     decoded_str = decoded_bytes.decode('utf-8')
     config = json.loads(decoded_str)
+    
     config_name = extract_name_vmess(config)
 
     address, port = split_address_port(f"{config['add']}:{config['port']}")
 
     stream_settings = {
-        "network": config['net']
+        "network": config['net'],
+        "security": "none"
     }
 
     if config['net'] == "tcp":
@@ -63,6 +68,12 @@ def decode_vmess(link):
             }
         }
 
+    elif config['net'] == "splithttp":
+        stream_settings["splithttpSettings"] = {
+            "host": config.get('host', ""),
+            "path": config.get('path', "/")
+        }
+
     if config.get('tls') == "tls":
         stream_settings["security"] = "tls"
         stream_settings["tlsSettings"] = {
@@ -75,20 +86,36 @@ def decode_vmess(link):
     xray_config = {
         "log": {"loglevel": "info"},
         "inbounds": [{
-            "port": 1080, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}
+            "port": 1080,
+            "protocol": "socks",
+            "settings": {
+                "auth": "noauth",
+                "udp": True
+            }
         }],
         "outbounds": [{
             "protocol": "vmess",
             "settings": {
                 "vnext": [{
-                    "address": address, "port": int(port),
-                    "users": [{"id": config['id'], "alterId": int(config['aid']), "security": config['scy']}]
+                    "address": address,
+                    "port": int(port),
+                    "users": [{
+                        "id": config['id'],
+                        "alterId": int(config['aid']),
+                        "security": config['scy'],
+                        "level": config.get('level', 8),
+                        "encryption": config.get('encryption', ''),
+                        "flow": config.get('flow', '')
+                    }]
                 }]
             },
-            "streamSettings": stream_settings
+            "streamSettings": stream_settings,
+            "tag": "proxy"
         }]
     }
-    return json.dumps(xray_config, indent=4) , config_name
+
+    return json.dumps(xray_config, indent=4), config_name
+
 
 
 def decode_vless(link):
@@ -118,6 +145,15 @@ def decode_vless(link):
                         "Pragma": query_params.get('pragma', "no-cache")
                     }
                 }
+            }
+        }
+
+    elif stream_settings["network"] == "ws":
+        stream_settings["wsSettings"] = {
+            "path": query_params.get('path', ["/"])[0],
+            "headers": {
+                "Host": query_params.get('host', [""])[0],
+                "User-Agent": query_params.get('ua', [""])[0]
             }
         }
 

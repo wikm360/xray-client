@@ -29,7 +29,7 @@ def get_sub():
     decoded_str = decoded_bytes.decode('utf-8')
     list_configs = decoded_str.split("\n")
     
-    directory_path = f"./subs/{sub_name}"
+    directory_path = f"../subs/{sub_name}"
     folder_path = Path(directory_path)
     if folder_path.exists() and folder_path.is_dir() :
         for filename in os.listdir(directory_path):
@@ -53,18 +53,18 @@ def get_sub():
             import convert
             config_json, config_name = convert.convert(config)
             if config_name != "False":
-                with open(f"./subs/{sub_name}/{count}.json", "w") as f:
+                with open(f"../subs/{sub_name}/{count}.json", "w") as f:
                     f.write(config_json)
                 
                 dict_name[count] = config_name
                 count += 1
     
-    with open(f"./subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
+    with open(f"../subs/{sub_name}/list.json", "w", encoding="utf-8") as f:
         json.dump(dict_name, f, ensure_ascii=False, indent=4)
 
 def list_subs():
     global sub_select
-    path = "./subs"
+    path = "../subs"
     directories = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
     if directories:
         for i, sub in enumerate(directories, 1):
@@ -73,8 +73,8 @@ def list_subs():
         print("'exit' for back to main menu")
         print("'del' for deleted a subscription (The selected sub will be deleted)")
     else :
-        print("'add' for add new sub link")
         print("No Sub detected ...")
+        print("'add' for add new sub link")
         print("'exit' for back to main menu")
     choose = input("Enter your choice (sub name): ").lower()
     if choose == "add":
@@ -83,7 +83,7 @@ def list_subs():
         pass  # back to main menu
     
     elif choose == "del" :
-        directory_path = f"./subs/{sub_select}"
+        directory_path = f"../subs/{sub_select}"
         folder_path = Path(directory_path)
 
         if folder_path.exists() and folder_path.is_dir():
@@ -104,7 +104,7 @@ def list_subs():
 
 def list_configs(sub_name):
     global os_sys
-    path_json = f"./subs/{sub_name}"
+    path_json = f"../subs/{sub_name}"
     list_file = [f for f in os.listdir(path_json) if f.endswith('.json') and f == "list.json"]
     if list_file:
         print(f"List of configs for {sub_name}:")
@@ -120,8 +120,8 @@ def list_configs(sub_name):
             try:
                 config_index = int(choose_2)
                 if 0 <= config_index < len(data):
-                    with open(f"./core/{os_sys}/select.txt", "w") as f:
-                        f.write(f"./subs/{sub_name}/{config_index}.json")
+                    with open(f"../core/{os_sys}/select.txt", "w") as f:
+                        f.write(f"../subs/{sub_name}/{config_index}.json")
                     print(f"Config {config_index} selected.")
                 else:
                     print("Please enter a valid config number.")
@@ -134,10 +134,10 @@ def list_configs(sub_name):
 
 def run_xray():
     global os_sys
-    with open(f"./core/{os_sys}/select.txt", "r") as f:
+    with open(f"../core/{os_sys}/select.txt", "r") as f:
         config_path = f.read().strip()
     print(f"Running Xray with config: {config_path}")
-    xray_path = f"./core/{os_sys}/xray"
+    xray_path = f"../core/{os_sys}/xray"
     subprocess.Popen([xray_path, '-config', config_path])
 
 
@@ -158,7 +158,7 @@ def main_menu():
         config_select = ""
         print(f"## OS detected = {os_sys} ##")
 
-        select_path = f"./core/{os_sys}/select.txt"
+        select_path = f"../core/{os_sys}/select.txt"
         with open (select_path  , "r") as f :
             data = f.readlines()
             if data :

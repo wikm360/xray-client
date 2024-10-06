@@ -2,7 +2,12 @@
 core/config.json
 xray_config.json
 core/win/config.json
-gui/__pycache__
+GUI-var/__pycache__
 test.py
 test3.py
 gui/test_2.py
+core/linux/select.txt
+gui/test3.py
+GUI-ver/test.py
+subs/3ircle
+GUI-ver/subs/3ircle
