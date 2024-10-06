@@ -30,10 +30,10 @@ window = Tk()
 window.title("XC(Xray-Cient)")
 #windows icon
 os_sys = os_det()
-if os_sys == "win" :
-    window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
-elif os_sys == "linux" :
-    window.iconphoto(True, str(ASSETS_PATH) + "/icon.png")
+# if os_sys == "win" :
+#     window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
+# elif os_sys == "linux" :
+#     window.iconphoto(True, str(ASSETS_PATH) + "/icon.png")
 
 window.geometry("836x513")
 window.configure(bg="#0C0C0C")
@@ -71,7 +71,7 @@ paste_btn.place(x=536,y=153,width=32,height=32)
 
 
 button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-import_btn2 = Button(import_page,image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: Import(name_var,url_box,profile_list,import_page,import_btn,console), relief="flat")
+import_btn2 = Button(import_page,image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: Import(name_var,url_var,profile_list,import_page,import_btn,console), relief="flat")
 import_btn2.place(x=12, y=200, width=94, height=39)
 
 cancel_img = PhotoImage(file=relative_to_assets("button_4.png"))
