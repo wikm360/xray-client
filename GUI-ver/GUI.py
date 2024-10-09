@@ -48,7 +48,8 @@ import_page.geometry("600x300")
 import_page.config(bg="#0C0C0C")
 import_page.title("import profile")
 import_page.resizable(False, False)
-
+if os_sys == "win" :
+    import_page.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
 
 name_label = Label(import_page,text="PROFILE NAME :",font=("calibri",15,"bold"),bg="#0C0C0C",fg="#ffffff")
 name_label.place(x=12,y=12)
@@ -152,3 +153,5 @@ sub_refresh(profile_list)
 window.protocol("WM_DELETE_WINDOW", on_close)
 import_page.protocol("WM_DELETE_WINDOW", func=lambda :on_close_import(import_page,import_btn,url_var,name_var))
 window.mainloop()
+
+
