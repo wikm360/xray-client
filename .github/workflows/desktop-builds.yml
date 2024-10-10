@@ -102,7 +102,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.icon ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
 
       - name: Zip executable and folders
         run: |
