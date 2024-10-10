@@ -6,8 +6,7 @@ on:
       - dev
 
 permissions:
-  contents: write  # برای دسترسی به محتویات مخزن
-  releases: write  # برای ایجاد ریلیز
+  contents: write
 
 env:
   PYTHON_VERSION: 3.12.6
