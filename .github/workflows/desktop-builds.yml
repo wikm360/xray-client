@@ -47,9 +47,79 @@ jobs:
           name: release
           path: ./release/XC-windows.zip
 
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: build-windows
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build executable with PyInstaller
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp -r ./dist/flet-ui ./release/
+          cp -r ./core ./release/
+          cp -r ./GUI-ver/subs ./release/
+          zip -r ./release/XC-linux.zip ./release/
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: ./release/XC-linux.zip
+
+  build-macos:
+    runs-on: macos-latest
+    needs: build-windows
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build executable with PyInstaller
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp -r ./dist/flet-ui ./release/
+          cp -r ./core ./release/
+          cp -r ./GUI-ver/subs ./release/
+          zip -r ./release/XC-macos.zip ./release/
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: ./release/XC-macos.zip
+
   github-release:
     name: Upload to GitHub Release
-    needs: build-windows
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
 
     permissions:
@@ -57,7 +127,7 @@ jobs:
       id-token: write
 
     steps:
-      - name: Download Release Asset
+      - name: Download Release Assets
         uses: actions/download-artifact@v3
         with:
           name: release
@@ -73,13 +143,13 @@ jobs:
           --notes ""
           --prerelease
           --generate-notes
-          --title "Release v1.0-${{ github.run_number }}"
+          --title "Release v4.1-${{ github.run_number }}"
 
       - name: Upload artifacts to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release upload
-          "v1.0-${{ github.run_number }}"
-          ./release/XC-windows.zip
+          "v4.1-${{ github.run_number }}"
+          ./release/*
           --repo "${{ github.repository }}"
