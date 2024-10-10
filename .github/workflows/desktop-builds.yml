@@ -33,7 +33,7 @@ jobs:
         run: pyinstaller --onefile --noconsole --icon=icon.ico ./GUI-ver/flet-ui.py
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4.3.4
         with:
           name: windows-build
           path: ./GUI-ver/dist/flet-ui.exe
