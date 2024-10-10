@@ -98,11 +98,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          pip install Pillow
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.icns ./GUI-ver/flet-ui.py
 
       - name: Zip executable and folders
         run: |
@@ -128,6 +127,9 @@ jobs:
       id-token: write
 
     steps:
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh
+
       - name: Download Release Assets
         uses: actions/download-artifact@v3
         with:
@@ -166,10 +168,12 @@ jobs:
           "v4.1-${{ github.run_number }}"
           ./release/windows/XC-windows.zip
           --repo "${{ github.repository }}"
+          
           gh release upload
           "v4.1-${{ github.run_number }}"
           ./release/linux/XC-linux.zip
           --repo "${{ github.repository }}"
+          
           gh release upload
           "v4.1-${{ github.run_number }}"
           ./release/macos/XC-macos.zip
