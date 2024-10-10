@@ -98,10 +98,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
+          pip install pillow
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.icns ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.icon ./GUI-ver/flet-ui.py
 
       - name: Zip executable and folders
         run: |
