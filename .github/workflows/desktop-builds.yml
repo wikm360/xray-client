@@ -41,6 +41,12 @@ jobs:
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: ./release/XC-windows.zip
+
   github-release:
     name: Upload to GitHub Release
     needs: build-windows
