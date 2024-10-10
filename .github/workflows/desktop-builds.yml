@@ -1,4 +1,4 @@
-name: Build Python Executables
+name: Build and Release Executable
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   PYTHON_VERSION: 3.12.6
@@ -16,7 +17,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3  # به نسخه 3 تغییر دهید
+        uses: actions/checkout@v3
       
       - name: Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -40,21 +41,39 @@ jobs:
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+  github-release:
+    name: Upload to GitHub Release
+    needs: build-windows
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Download Release Asset
+        uses: actions/download-artifact@v3
+        with:
+          name: release
+          path: ./release/
+
+      - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v1.0-${{ github.run_number }}
-          release_name: Release v1.0-${{ github.run_number }}
-          draft: false
-          prerelease: false
+        run: >-
+          gh release create
+          "v1.0-${{ github.run_number }}"
+          --repo "${{ github.repository }}"
+          --notes ""
+          --prerelease
+          --generate-notes
+          --title "Release v1.0-${{ github.run_number }}"
 
-      - name: Upload Release Asset (Windows ZIP)
-        uses: softprops/action-gh-release@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/XC-windows.zip
-          asset_name: XC-windows.zip
-          asset_content_type: application/zip
+      - name: Upload artifacts to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release upload
+          "v1.0-${{ github.run_number }}"
+          ./release/XC-windows.zip
+          --repo "${{ github.repository }}"
