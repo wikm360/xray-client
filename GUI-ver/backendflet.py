@@ -6,6 +6,8 @@ import subprocess
 import threading
 import platform
 from pathlib import Path
+import convert
+import shutil
 
 
 class XrayBackend:
@@ -64,7 +66,7 @@ class XrayBackend:
         dict_name = {}
         for count, config in enumerate(list_configs):
             if config.strip():
-                config_json, config_name = self.convert(config)
+                config_json, config_name = convert.convert(config)
                 if config_name != "False":
                     with open(f"./subs/{name}/{count}.json", "w") as f:
                         f.write(config_json)
@@ -75,10 +77,10 @@ class XrayBackend:
         with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
             f.write(url)
 
-    def convert(self, config):
-        # Implement your conversion logic here
-        # This is a placeholder implementation
-        return json.dumps({"config": config}), "Config Name"
+    # def convert(self, config):
+    #     # Implement your conversion logic here
+    #     # This is a placeholder implementation
+    #     return json.dumps({"config": config}), "Config Name"
 
     def update_subscription(self, profile):
         path = f"./subs/{profile}/url.txt"
@@ -88,7 +90,23 @@ class XrayBackend:
 
     def delete_subscription(self, profile):
         directory_path = f"./subs/{profile}"
-        os.system(f"rm -rf {directory_path}")
+        folder_path = Path(directory_path)
+        if folder_path.exists() and folder_path.is_dir():
+            for filename in os.listdir(directory_path):
+                file_path = os.path.join(directory_path, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    pass
+                    # self.log(f"Error {file_path}: {e}")
+            
+            shutil.rmtree(directory_path)
+            
+            # config_refresh(config_list)
+            # self.log(f"Previous {profile} sub deleted")
 
     def ping_config(self, profile, config_num):
         config_path = f"./subs/{profile}/{config_num}.json"

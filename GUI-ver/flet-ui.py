@@ -92,6 +92,7 @@ class XrayClientUI:
         )
 
         self.page.add(import_button, self.tabs)
+        self.log("XC - Created By wikm , 3ircle with ❤️")
 
     def add_profile_tab(self, profile):
         configs = self.backend.get_configs(profile)
@@ -130,6 +131,13 @@ class XrayClientUI:
     def select_config(self, config, profile):
         self.selected_config = config  # Store the selected config
         print(f"Selected config: {config}")  # Print the name of the selected config
+        try:
+            config_index = int(config.split("-")[0])
+            with open(f"./core/{self.backend.os_sys}/select.txt", "w") as f:
+                f.write(f"./subs/{profile}/{config_index}.json")
+            self.log(f"Config {config_index} selected.")
+        except Exception as e:
+            self.log(f"Error selecting config: {str(e)}")
         self.refresh_profile_tab(profile)  # Refresh the appearance of configs
 
     def refresh_profile_tab(self, profile):
@@ -196,9 +204,14 @@ class XrayClientUI:
                 ft.TextButton("Import", on_click=import_sub),
             ],
         )
-        self.page.dialog = dialog
+        self.page.overlay.append(dialog)
         dialog.open = True
         self.page.update()
+
+    def close_dialog(self, dialog):
+        dialog.open = False
+        self.page.update()
+
 
 
     def toggle_xray(self, e):
