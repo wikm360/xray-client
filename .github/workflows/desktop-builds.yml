@@ -44,7 +44,7 @@ jobs:
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
-          name: release
+          name: windows-release
           path: ./release/XC-windows.zip
 
   build-linux:
@@ -79,7 +79,7 @@ jobs:
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
-          name: release
+          name: linux-release
           path: ./release/XC-linux.zip
 
   build-macos:
@@ -102,7 +102,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.icns ./GUI-ver/flet-ui.py
 
       - name: Zip executable and folders
         run: |
@@ -115,7 +115,7 @@ jobs:
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
-          name: release
+          name: macos-release
           path: ./release/XC-macos.zip
 
   github-release:
@@ -131,15 +131,27 @@ jobs:
       - name: Download Release Assets
         uses: actions/download-artifact@v3
         with:
-          name: release
-          path: ./release/
+          name: windows-release
+          path: ./release/windows/
+
+      - name: Download Release Assets
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-release
+          path: ./release/linux/
+
+      - name: Download Release Assets
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-release
+          path: ./release/macos/
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release create
-          "v1.0-${{ github.run_number }}"
+          "v4.1-${{ github.run_number }}"
           --repo "${{ github.repository }}"
           --notes ""
           --prerelease
@@ -152,5 +164,13 @@ jobs:
         run: >-
           gh release upload
           "v4.1-${{ github.run_number }}"
-          ./release/*
+          ./release/windows/XC-windows.zip
+          --repo "${{ github.repository }}"
+          gh release upload
+          "v4.1-${{ github.run_number }}"
+          ./release/linux/XC-linux.zip
+          --repo "${{ github.repository }}"
+          gh release upload
+          "v4.1-${{ github.run_number }}"
+          ./release/macos/XC-macos.zip
           --repo "${{ github.repository }}"
