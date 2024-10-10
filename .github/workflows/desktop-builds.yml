@@ -36,4 +36,4 @@ jobs:
         uses: actions/upload-artifact@v4.3.4
         with:
           name: windows-build
-          path: ./GUI-ver/dist/flet-ui.exe
+          path: ./dist/flet-ui.exe
