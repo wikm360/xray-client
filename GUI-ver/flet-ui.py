@@ -2,6 +2,7 @@ import flet as ft
 from backendflet import XrayBackend
 import threading
 import os
+from collections import deque
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
@@ -10,17 +11,17 @@ class XrayClientUI:
         self.page.title = "XC (Xray-Client)"
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.padding = 20
-        self.selected_config = None  # Property to store the selected config
+        self.selected_config = None
         self.tabs = ft.Tabs(
             selected_index=0,
             animation_duration=300,
             tabs=[ft.Tab(text="Home")],
             expand=1,
         )
+        self.log_buffer = deque(maxlen=1000)  # Limit log entries
         self.create_ui()
 
     def create_ui(self):
-        # Create Home tab content
         system_info = self.backend.get_system_info()
         
         info_card = ft.Card(
@@ -71,11 +72,9 @@ class XrayClientUI:
 
         self.tabs.tabs[0].content = home_content
 
-        # Create tabs for each profile
         for profile in self.backend.get_profiles():
             self.add_profile_tab(profile)
 
-        # Add import button
         import_button = ft.ElevatedButton(
             "Import Subscription",
             on_click=self.show_import_dialog,
@@ -96,22 +95,10 @@ class XrayClientUI:
 
     def add_profile_tab(self, profile):
         configs = self.backend.get_configs(profile)
-
-        # Use ListView for scrolling
         config_list = ft.ListView(expand=1, spacing=0, padding=20)
 
         for config in configs:
-            is_selected = config == self.selected_config
-            config_list.controls.append(
-                ft.ListTile(  # Use ListTile to display config
-                    title=ft.Container(  # Use Container to change background color
-                        content=ft.Text(config),
-                        bgcolor=ft.colors.BLACK87 if is_selected else ft.colors.TRANSPARENT,  # Change color based on selection
-                        padding=ft.padding.all(8)  # Set internal padding
-                    ),
-                    on_click=lambda e, config=config: self.select_config(config, profile),  # Select config
-                )
-            )
+            config_list.controls.append(self.create_config_tile(config, profile))
 
         update_button = ft.ElevatedButton("Update", on_click=lambda _: self.update_subscription(profile))
         delete_button = ft.ElevatedButton("Delete", on_click=lambda _: self.delete_subscription(profile))
@@ -122,15 +109,22 @@ class XrayClientUI:
             config_list
         ], expand=True)
 
-        self.tabs.tabs.append(ft.Tab(
-            text=profile,
-            content=tab_content
-        ))
+        self.tabs.tabs.append(ft.Tab(text=profile, content=tab_content))
         self.page.update()
 
+    def create_config_tile(self, config, profile):
+        is_selected = config == self.selected_config
+        return ft.ListTile(
+            title=ft.Container(
+                content=ft.Text(config),
+                bgcolor=ft.colors.BLACK87 if is_selected else ft.colors.TRANSPARENT,
+                padding=ft.padding.all(8)
+            ),
+            on_click=lambda _, c=config, p=profile: self.select_config(c, p),
+        )
+
     def select_config(self, config, profile):
-        self.selected_config = config  # Store the selected config
-        print(f"Selected config: {config}")  # Print the name of the selected config
+        self.selected_config = config
         try:
             config_index = int(config.split("-")[0])
             with open(f"./core/{self.backend.os_sys}/select.txt", "w") as f:
@@ -138,26 +132,14 @@ class XrayClientUI:
             self.log(f"Config {config_index} selected.")
         except Exception as e:
             self.log(f"Error selecting config: {str(e)}")
-        self.refresh_profile_tab(profile)  # Refresh the appearance of configs
+        self.refresh_profile_tab(profile)
 
     def refresh_profile_tab(self, profile):
         for tab in self.tabs.tabs:
             if tab.text == profile:
                 configs = self.backend.get_configs(profile)
                 config_list = tab.content.controls[1]
-                config_list.controls.clear()
-                for config in configs:
-                    is_selected = config == self.selected_config
-                    config_list.controls.append(
-                        ft.ListTile(
-                            title=ft.Container(
-                                content=ft.Text(config),
-                                bgcolor=ft.colors.BLACK87 if is_selected else ft.colors.TRANSPARENT,
-                                padding=ft.padding.all(8)
-                            ),
-                            on_click=lambda e, config=config: self.select_config(config, profile),
-                        )
-                    )
+                config_list.controls = [self.create_config_tile(config, profile) for config in configs]
                 break
         self.page.update()
 
@@ -167,10 +149,7 @@ class XrayClientUI:
 
     def delete_subscription(self, profile):
         self.backend.delete_subscription(profile)
-        for i, tab in enumerate(self.tabs.tabs):
-            if tab.text == profile:
-                self.tabs.tabs.pop(i)
-                break
+        self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
         self.page.update()
 
     def ping_all_configs(self, profile, config_list):
@@ -212,8 +191,6 @@ class XrayClientUI:
         dialog.open = False
         self.page.update()
 
-
-
     def toggle_xray(self, e):
         if self.backend.xray_process is None:
             config_path = f"./core/{self.backend.os_sys}/select.txt"
@@ -245,7 +222,8 @@ class XrayClientUI:
             self.log(log_line)
 
     def log(self, message):
-        self.log_view.value += f"{message}\n"
+        self.log_buffer.append(message)
+        self.log_view.value = "\n".join(self.log_buffer)
         self.page.update()
 
 def main(page: ft.Page):
