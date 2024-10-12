@@ -98,30 +98,77 @@ class XrayClientUI:
         config_list = ft.ListView(expand=1, spacing=0, padding=20)
 
         for config in configs:
-            config_list.controls.append(self.create_config_tile(config, profile))
+            config_list.controls.append(self.create_config_tile_with_ping(config, profile))
 
         update_button = ft.ElevatedButton("Update", on_click=lambda _: self.update_subscription(profile))
         delete_button = ft.ElevatedButton("Delete", on_click=lambda _: self.delete_subscription(profile))
         ping_all_button = ft.ElevatedButton("Ping All", on_click=lambda _: self.ping_all_configs(profile, config_list))
 
         tab_content = ft.Column([
-            ft.Row([update_button, delete_button, ping_all_button]),
+            ft.Row([update_button, delete_button, ping_all_button]), #ft.Row([update_button, delete_button, ping_all_button], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
             config_list
         ], expand=True)
 
         self.tabs.tabs.append(ft.Tab(text=profile, content=tab_content))
         self.page.update()
 
-    def create_config_tile(self, config, profile):
+
+    def create_config_tile_with_ping(self, config, profile):
         is_selected = config == self.selected_config
-        return ft.ListTile(
-            title=ft.Container(
-                content=ft.Text(config),
-                bgcolor=ft.colors.BLACK87 if is_selected else ft.colors.TRANSPARENT,
-                padding=ft.padding.all(8)
+        config_name = ft.Text(config, size=16, color=ft.colors.WHITE)
+        ping_text = ft.Text("Ping: -", size=16, color=ft.colors.WHITE)
+
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Container(
+                        content=config_name,
+                        padding=ft.padding.all(10),
+                        bgcolor=ft.colors.LIGHT_BLUE if is_selected else ft.colors.TRANSPARENT,
+                        expand=1,
+                        border_radius=10
+                    ),
+                    ft.Container(
+                        content=ping_text,
+                        padding=ft.padding.all(10),
+                        expand=0,
+                        border_radius=10
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
             on_click=lambda _, c=config, p=profile: self.select_config(c, p),
+            on_hover=lambda e: self.on_hover_row(e, config),
+            data={'config_name': config_name, 'ping_text': ping_text}
         )
+
+
+    def ping_all_configs(self, profile, config_list):
+        def ping_worker():
+            for control in config_list.controls:
+                if isinstance(control, ft.Container):
+                    config_name = control.data['config_name'].value
+                    ping_text = control.data['ping_text']
+                    config_num = config_name.split("-")[0].strip()
+                    result = self.backend.ping_config(profile, config_num)
+
+                    ping_text.value = f"Ping: {result}"
+                    self.page.update()
+
+        threading.Thread(target=ping_worker, daemon=True).start()
+    
+
+    def on_hover_row(self, e, config):
+        container = e.control
+        if e.data == "true":
+            container.bgcolor = ft.colors.BLUE_GREY
+            container.border_radius = 10
+        else:
+            container.bgcolor = ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT
+            container.border_radius = 10
+        self.page.update()
+
+
 
     def select_config(self, config, profile):
         self.selected_config = config
@@ -139,29 +186,10 @@ class XrayClientUI:
             if tab.text == profile:
                 configs = self.backend.get_configs(profile)
                 config_list = tab.content.controls[1]
-                config_list.controls = [self.create_config_tile(config, profile) for config in configs]
+                config_list.controls = [self.create_config_tile_with_ping(config, profile) for config in configs]
                 break
         self.page.update()
 
-    def update_subscription(self, profile):
-        self.backend.update_subscription(profile)
-        self.refresh_profile_tab(profile)
-
-    def delete_subscription(self, profile):
-        self.backend.delete_subscription(profile)
-        self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
-        self.page.update()
-
-    def ping_all_configs(self, profile, config_list):
-        def ping_worker():
-            for control in config_list.controls:
-                config_name = control.title.content.value
-                config_num = config_name.split("-")[0].strip()
-                result = self.backend.ping_config(profile, config_num)
-                control.title.content = ft.Text(f"{config_name} (Ping: {result})")
-            self.page.update()
-
-        threading.Thread(target=ping_worker, daemon=True).start()
 
     def show_import_dialog(self, e):
         def import_sub(e):
@@ -225,6 +253,7 @@ class XrayClientUI:
         self.log_buffer.append(message)
         self.log_view.value = "\n".join(self.log_buffer)
         self.page.update()
+
 
 def main(page: ft.Page):
     XrayClientUI(page)
