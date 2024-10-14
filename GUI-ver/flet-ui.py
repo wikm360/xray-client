@@ -188,29 +188,22 @@ class XrayClientUI:
         config_name = ft.Text(config, size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
         ping_text = ft.Text("Ping: -", size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
 
-        return ft.Container(
-            content=ft.Row(
-                [
-                    ft.Container(
-                        content=config_name,
-                        padding=ft.padding.all(10),
-                        bgcolor=ft.colors.LIGHT_BLUE if is_selected else ft.colors.TRANSPARENT,
-                        expand=1,
-                        border_radius=10
-                    ),
-                    ft.Container(
-                        content=ping_text,
-                        padding=ft.padding.all(10),
-                        expand=0,
-                        border_radius=10
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        return ft.ListTile(
+            title=ft.Container(
+                content=ft.Text(config, size=16),
+                bgcolor=ft.colors.LIGHT_BLUE if is_selected else ft.colors.TRANSPARENT,
+                padding=ft.padding.all(10),
+                animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
+                border_radius=10
             ),
-            on_click=lambda _, c=config, p=profile: self.select_config(c, p),
-            on_hover=lambda e: self.on_hover_row(e, config),
-            data={'config_name': config_name, 'ping_text': ping_text}
+            trailing=ft.Container(
+                content=ping_text,
+                padding=ft.padding.all(10)
+            ),
+            selected=is_selected,
+            on_click=lambda _, c=config, p=profile: self.select_config(c, p)
         )
+
 
     # "0"  = cancel does not exist
     #  "1" = cancel showed
@@ -235,9 +228,9 @@ class XrayClientUI:
         def ping_worker():
             self.cancel_real_delay_stat = "1" 
             for control in config_list.controls:
-                if isinstance(control, ft.Container):
-                    config_name = control.data['config_name'].value
-                    ping_text = control.data['ping_text']
+                if isinstance(control, ft.ListTile):
+                    config_name = control.title.content.value
+                    ping_text = control.trailing.content
                     config_num = config_name.split("-")[0].strip()
                     result = self.backend.ping_config(profile, config_num , self.ping_type)
 
@@ -255,19 +248,16 @@ class XrayClientUI:
 
         threading.Thread(target=ping_worker, daemon=True).start()
 
-    
-
-    def on_hover_row(self, e, config):
-        container = e.control
-        if e.data == "true":
-            container.bgcolor = ft.colors.BLUE_GREY
-            container.border_radius = 10
-        else:
-            container.bgcolor = ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT
-            container.border_radius = 10
-        self.page.update()
-
-
+    # def on_hover_row(self, e, config):
+    #     container = e.control
+    #     if e.data == "true" and container.bgcolor != ft.colors.BLUE_GREY:
+    #         container.bgcolor = ft.colors.BLUE_GREY
+    #         container.border_radius = 10
+    #         self.page.update()
+    #     elif e.data == "false" and container.bgcolor != (ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT):
+    #         container.bgcolor = ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT
+    #         container.border_radius = 10
+    #         self.page.update()
 
     def select_config(self, config, profile):
         self.selected_config = config
@@ -281,22 +271,33 @@ class XrayClientUI:
         self.refresh_profile_tab(profile)
 
     def refresh_profile_tab(self, profile):
-        if profile == "all" :
+        if profile == "all":
             profiles = self.backend.get_profiles()
-            for profile in profiles :
+            for profile in profiles:
                 for tab in self.tabs.tabs:
                     if tab.text == profile:
                         configs = self.backend.get_configs(profile)
                         config_list = tab.content.controls[1]
                         config_list.controls = [self.create_config_tile_with_ping(config, profile) for config in configs]
+        
         for tab in self.tabs.tabs:
             if tab.text == profile:
                 configs = self.backend.get_configs(profile)
                 config_list = tab.content.controls[1]
-                config_list.controls = [self.create_config_tile_with_ping(config, profile) for config in configs]
+                for control in config_list.controls:
+                    config_name = control.title.content.value
+                    # change color to selcted
+                    if config_name == self.selected_config:
+                        control.title.content.bgcolor = ft.colors.LIGHT_BLUE
+                    else:
+                        control.title.content.bgcolor = ft.colors.TRANSPARENT
+                # just add new config
+                for config in configs:
+                    if not any(control.title.content.value == config for control in config_list.controls):
+                        config_list.controls.append(self.create_config_tile_with_ping(config, profile))
+                        
                 break
         self.page.update()
-
 
     def show_import_dialog(self, e):
         def import_sub(e):
@@ -385,10 +386,7 @@ class XrayClientUI:
         self.refresh_profile_tab(profile)
     def delete_subscription(self , profile) :
         self.backend.delete_subscription(profile)
-        for tab in self.tabs.tabs:
-            if tab.text == profile:
-                self.tabs.tabs.remove(tab)
-                break
+        self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
 
 def main(page: ft.Page):
     XrayClientUI(page)

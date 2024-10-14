@@ -103,41 +103,51 @@ class XrayBackend:
             
             # self.log(f"Previous {profile} sub deleted")
 
-    def ping_config(self, profile, config_num , ping_type):
+    def ping_config(self, profile, config_num, ping_type):
         config_path = f"./subs/{profile}/{config_num}.json"
-        if ping_type == "Tcping" :
+        
+        if ping_type == "Tcping":
             try:
                 with open(config_path, 'r') as f:
                     config = json.load(f)
                 address = config['outbounds'][0]['settings']['vnext'][0]['address']
                 ping_cmd = ['ping', '-n', '1', '-w', '1000', address] if self.os_sys == "win" else ['ping', '-c', '1', '-W', '1', address]
-                result = subprocess.run(ping_cmd, capture_output=True, text=True)
+                
+                if os.name == 'nt':
+                    result = subprocess.Popen(ping_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    result = subprocess.Popen(ping_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                stdout, stderr = result.communicate()
                 if result.returncode == 0:
-                    time_p = result.stdout.split('time=')[1].split()[0]
-                    return f"{time_p}ms"
+                    time_p = stdout.split('time=')[1].split()[0]
+                    return f"{time_p}"
                 else:
                     return "Timeout"
+                    
             except Exception as e:
                 return f"Error: {str(e)}"
-        elif ping_type == "Real-delay" :
+
+        elif ping_type == "Real-delay":
             if self.xray_process:
                 self.stop_xray()
 
             self.run_xray(config_path)
             time.sleep(2)
-            try :
+            try:
                 s_time = time.time()
-                response = requests.get('http://gstatic.com/generate_204', proxies={"http":f"http://127.0.0.1:1080"})
+                response = requests.get('http://gstatic.com/generate_204', proxies={"http": "http://127.0.0.1:1080"})
                 e_time = time.time()
+                if 200 <= response.status_code < 300:
+                    delay_ms = (e_time - s_time) * 1000
+                    return f"{delay_ms:.2f} ms"
+                else:
+                    return "Timeout"
             except :
                 self.stop_xray()
-                return "Timeout"
-            if response.status_code <300 and response.status_code > 199:
+                return f"Timeout"
+            finally:
                 self.stop_xray()
-                return e_time - s_time
-            else:
-                self.stop_xray()
-                return "Timeout"
+
 
     def run_xray(self, config_path):
         try:
