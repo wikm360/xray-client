@@ -1,157 +1,395 @@
-from pathlib import Path
-from tkinter import *
-from backend import *
+import flet as ft
+from backend import XrayBackend
+import threading
+import os
+from collections import deque
 
-OUTPUT_PATH = Path(__file__).parent
-print(OUTPUT_PATH)
-ASSETS_PATH = OUTPUT_PATH / Path(r"./assets/frame0")
+class XrayClientUI:
+    def __init__(self, page: ft.Page):
+        self.page = page
+        self.backend = XrayBackend()
+        self.page.title = "XC (Xray-Client)"
+        self.page.theme_mode = ft.ThemeMode.DARK
+        self.page.padding = 20
+        self.selected_config = None
+        self.real_delay_stat = None
+        self.ping_all_button = None
+        self.cancel_real_delay_stat = "0"
+        self.ping_type = "Tcping"
+        self.tabs = ft.Tabs(
+            selected_index=0,
+            animation_duration=300,
+            tabs=[ft.Tab(text="Home")],
+            expand=1,
+        )
+        self.log_buffer = deque(maxlen=1000)  # Limit log entries
+        self.create_ui()
 
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
-def toggle_switch(button, console):
-    if button['image'] == str(button_image_off):
-        button.config(image=button_image_on)
-        run_xray(console)
-        log("Xray started...\n" , console)
-    else:
-        button.config(image=button_image_off)
-        close_xray()
-        log("Xray stopped...\n" , console)
-def on_close():
-    if messagebox.askokcancel("Quit", "Do you want to exit the program?"):
-        close_xray()
-        window.destroy()
+    def create_ui(self):
+        system_info = self.backend.get_system_info()
 
+        settings_icon_value = ft.icons.SETTINGS if self.page.theme_mode == ft.ThemeMode.DARK else ft.icons.SETTINGS_OUTLINED
+        settings_icon = ft.IconButton(
+            icon=settings_icon_value,
+            icon_size=24,
+            on_click=self.show_settings_dialog,
+            style=ft.ButtonStyle(
+                color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK,
+                bgcolor=ft.colors.TRANSPARENT,
+            ),
+            tooltip="Settings"
+        )
 
-#================= main page setting ==============#
+        import_button = ft.ElevatedButton(
+            "Import Subscription",
+            on_click=self.show_import_dialog,
+            style=ft.ButtonStyle(
+                color={
+                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                },
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.GREEN,
+                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                },
+            )
+        )
 
+        header = ft.Row(
+            controls=[import_button, ft.Container(expand=1), settings_icon],  # container with expand fill the space bitween buttons
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,  # set two button in two side
+        )
 
-window = Tk()
-window.title("XC(Xray-Cient)")
-#windows icon
-os_sys = os_det()
-if os_sys == "win" :
-    window.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
-# elif os_sys == "linux" :
-#     window.iconphoto(True, str(ASSETS_PATH) + "/icon.png")
+        info_card = ft.Card(
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text(f"XC (Xray-Client)", size=24, weight=ft.FontWeight.BOLD),
+                    ft.Text(f"XC Version: {self.backend.version}", size=16),
+                    ft.Text(f"Xray Version: {self.backend.xray_version}", size=16),
+                    ft.Divider(),
+                    *[ft.Text(f"{key}: {value}", size=14) for key, value in system_info.items()],
+                ]),
+                padding=20,
+            ),
+            elevation=5,
+        )
 
-window.geometry("836x513")
-window.configure(bg="#0C0C0C")
-window.resizable(False, False)
+        self.xray_button = ft.ElevatedButton(
+            "Start Xray",
+            on_click=self.toggle_xray,
+            style=ft.ButtonStyle(
+                color={
+                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                },
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.BLUE,
+                    ft.ControlState.HOVERED: ft.colors.BLUE_700,
+                },
+            )
+        )
+        
+        self.log_view = ft.TextField(
+            multiline=True,
+            read_only=True,
+            expand=True,
+            min_lines=10,
+            max_lines=20,
+            border_color=ft.colors.BLUE_200,
+        )
 
+        home_content = ft.Column([
+            info_card,
+            ft.Container(height=20),
+            self.xray_button,
+            ft.Container(height=20),
+            ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
+            self.log_view
+        ], expand=True, spacing=10)
 
-#================= import page ===================#
+        self.tabs.tabs[0].content = home_content
 
+        for profile in self.backend.get_profiles():
+            self.add_profile_tab(profile)
 
-import_page = Toplevel()
-import_page.geometry("600x300")
-import_page.config(bg="#0C0C0C")
-import_page.title("import profile")
-import_page.resizable(False, False)
-if os_sys == "win" :
-    import_page.iconbitmap(str(ASSETS_PATH) + "/icon.ico")
-
-name_label = Label(import_page,text="PROFILE NAME :",font=("calibri",15,"bold"),bg="#0C0C0C",fg="#ffffff")
-name_label.place(x=12,y=12)
-
-
-name_var = StringVar()
-name_box = Entry(import_page,textvariable=name_var)
-name_box.place(x=12,y=45,width=260,height=32)
-
-url_label = Label(import_page,text="URL :",font=("calibri",15,"bold"),bg="#0C0C0C",fg="#ffffff")
-url_label.place(x=12,y=120)
-
-url_var = StringVar()
-url_box = Entry(import_page,textvariable=url_var)
-url_box.place(x=12,y=153,width=520,height=32)
-
-paste_img = PhotoImage(file=relative_to_assets("paste_btn.png"))
-paste_btn = Button(import_page,image=paste_img, borderwidth=0, highlightthickness=0, command=lambda: Clipboard(url_var), relief="flat")
-paste_btn.place(x=536,y=153,width=32,height=32)
-
-
-button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-import_btn2 = Button(import_page,image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: Import(name_var,url_var,profile_list,import_page,import_btn,console), relief="flat")
-import_btn2.place(x=12, y=200, width=94, height=39)
-
-cancel_img = PhotoImage(file=relative_to_assets("button_4.png"))
-cancel_btn = Button(import_page,image=cancel_img, borderwidth=0, highlightthickness=0, command=lambda :on_close_import(import_page,import_btn,url_var,name_var), relief="flat")
-cancel_btn.place(x=150, y=200, width=94, height=39)
-
-import_page.withdraw()
-
-
-#================= main elements setup ===================#
-
-canvas = Canvas(window, bg="#0C0C0C", height=513, width=836, bd=0, highlightthickness=0, relief="ridge")
-canvas.place(x=0, y=0)
-
-
-import_btn = Button(window,image=button_image_1, borderwidth=0, highlightthickness=0, command=lambda: Import_btn(import_page,import_btn), relief="flat")
-import_btn.place(x=37.0, y=23.0, width=94.0, height=39.0)
-
-button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
-update_btn = Button(image=button_image_2, borderwidth=0, highlightthickness=0, command=lambda:Update_btn(profile_list ,  console , profile_list , config_list), relief="flat")
-update_btn.place(x=156.0, y=23.0, width=94.0, height=39.0)
-
-button_image_3 = PhotoImage(file=relative_to_assets("button_3.png"))
-remove_btn = Button(image=button_image_3, borderwidth=0, highlightthickness=0, command=lambda:Delete_btn(profile_list ,console, profile_list , config_list), relief="flat")
-remove_btn.place(x=275.0, y=23.0, width=94.0, height=39.0)
-
-
-
-button_image_off = PhotoImage(file=relative_to_assets("button_off.png"))
-button_image_on = PhotoImage(file=relative_to_assets("button_on.png"))
-start_btn = Button(image=button_image_off, borderwidth=0, highlightthickness=0, 
-                   command=lambda: toggle_switch(start_btn, console), relief="flat")
-start_btn.place(x=704.0, y=23.0, width=94.0, height=39.0)
-
-console = Text(window, bg="#333333", fg="#FFFFFF", font=("Helvetica", 12), bd=0, highlightthickness=1,
-              highlightbackground="#444444")
-console.place(x=275, y=361, width=512, height=137)
-console_scroll = Scrollbar(window, orient=VERTICAL, bg="#444444", troughcolor="#222222", bd=0, highlightthickness=0)
-console_scroll.place(x=790, y=361, width=8, height=137)
-console.config(yscrollcommand=console_scroll.set)
-console_scroll.config(command=console.yview)
-
-console.bind("<Key>", lambda e: "break")
-console.bind("<Control-c>", lambda e: console.event_generate('<<Copy>>'))
+        # add header and tabs to page
+        self.page.add(header, self.tabs)
+        self.log("XC - Created By wikm , 3ircle with ❤️")
 
 
+    def add_profile_tab(self, profile):
+        configs = self.backend.get_configs(profile)
+        config_list = ft.ListView(expand=1, spacing=0, padding=20)
 
-profile_list = Listbox(window, selectbackground="#2d9bf0", font=("Helvetica", 16, "normal"),
-                       bg="#333333", fg="#FFFFFF", bd=0, highlightthickness=1, relief="flat",
-                       selectforeground="#FFFFFF", highlightbackground="#444444")
-profile_list.place(x=37, y=83, width=210, height=415)
-profile_list.bind("<<ListboxSelect>>", lambda event: profile_selected(profile_list, config_list ,console))
+        for config in configs:
+            config_list.controls.append(self.create_config_tile_with_ping(config, profile))
 
-profile_scroll = Scrollbar(window, orient=VERTICAL, bg="#444444", troughcolor="#222222", bd=0, highlightthickness=0)
-profile_scroll.place(x=251, y=83, width=8, height=415)
-profile_list.config(yscrollcommand=profile_scroll.set)
-profile_scroll.config(command=profile_list.yview)
+        update_button = ft.ElevatedButton("Update", on_click=lambda _: self.update_subscription(profile))
+        delete_button = ft.ElevatedButton("Delete", on_click=lambda _: self.delete_subscription(profile))
+        self.ping_all_button = ft.ElevatedButton(
+            "Ping All", 
+            on_click=lambda _: self.ping_button(profile, config_list)
+        )
 
-config_list = Listbox(window, selectbackground="#2d9bf0", font=("egoe UI Emoji", 14, "normal"),
-                      bg="#333333", fg="#FFFFFF", bd=0, highlightthickness=1, relief="flat",
-                      selectforeground="#FFFFFF", highlightbackground="#444444")
-config_list.place(x=275, y=83, width=512, height=271)
+        tab_content = ft.Column([
+            ft.Row([update_button, delete_button, self.ping_all_button]), #ft.Row([update_button, delete_button, ping_all_button], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+            config_list
+        ], expand=True)
 
-config_scroll = Scrollbar(window, orient=VERTICAL, bg="#444444", troughcolor="#222222", bd=0, highlightthickness=0)
-config_scroll.place(x=790, y=83, width=8, height=271)
-config_list.config(yscrollcommand=config_scroll.set)
-config_scroll.config(command=config_list.yview)
-config_list.bind("<<ListboxSelect>>", lambda event: config_selected(config_list, console))
+        self.tabs.tabs.append(ft.Tab(text=profile, content=tab_content))
+        self.page.update()
+
+    def show_settings_dialog(self, e):
+        ping_type_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option("Real-delay"),
+                ft.dropdown.Option("Tcping"),
+            ],
+            value=self.ping_type,
+            on_change=self.change_ping_type,
+            expand=True,
+        )
+        theme_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option("Dark"),
+                ft.dropdown.Option("Light"),
+            ],
+            value=self.page.theme_mode.name.capitalize(),
+            on_change=self.change_theme,
+            expand=True,
+        )
+
+        settings_dialog = ft.AlertDialog(
+            title=ft.Text("Settings"),
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Row([ft.Text("Ping Type:"), ping_type_dropdown], 
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("Theme:"), theme_dropdown], 
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                    ],
+                    spacing=20,
+                ),
+                padding=20,
+                width=400,
+            ),
+            actions=[ft.TextButton("Close", on_click=lambda _: self.close_dialog(settings_dialog))],
+        )
+
+        # open setting page
+        self.page.overlay.append(settings_dialog)
+        settings_dialog.open = True
+        self.page.update()
 
 
-start_log_processing(console)
-log("XC(Xray-Client) Ver 3.0", console=console)
-log("Created by wikm, 3ircle with ❤️", console=console)
+    def create_config_tile_with_ping(self, config, profile):
+        is_selected = config == self.selected_config
+        config_name = ft.Text(config, size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
+        ping_text = ft.Text("Ping: -", size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
 
-sub_refresh(profile_list)
+        return ft.ListTile(
+            title=ft.Container(
+                content=ft.Text(config, size=16),
+                bgcolor=ft.colors.LIGHT_BLUE if is_selected else ft.colors.TRANSPARENT,
+                padding=ft.padding.all(10),
+                animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
+                border_radius=10
+            ),
+            trailing=ft.Container(
+                content=ping_text,
+                padding=ft.padding.all(10)
+            ),
+            selected=is_selected,
+            on_click=lambda _, c=config, p=profile: self.select_config(c, p)
+        )
 
 
-window.protocol("WM_DELETE_WINDOW", on_close)
-import_page.protocol("WM_DELETE_WINDOW", func=lambda :on_close_import(import_page,import_btn,url_var,name_var))
-window.mainloop()
+    # "0"  = cancel does not exist
+    #  "1" = cancel showed
+    #  "2" = camcel clicked   
+    def ping_button(self, profile, config_list):
+        if self.cancel_real_delay_stat == "0":
+            self.ping_all_button.text = "Cancel"
+            self.cancel_real_delay_stat = "1"
+            self.ping_all_configs(profile, config_list)
+        elif self.cancel_real_delay_stat == "1": 
+            self.ping_all_button.text = "Ping All"
+            self.cancel_real_delay_stat = "2"
 
+    def ping_all_configs(self, profile, config_list):
+        if self.ping_type == "Real-delay" :
+            self.xray_button.disabled = True
+            self.xray_button.text = "Start Xray"
+            self.xray_button.style.bgcolor = {
+                ft.ControlState.DEFAULT: ft.colors.BLUE,
+                ft.ControlState.HOVERED: ft.colors.BLUE_700,
+            }
+        def ping_worker():
+            self.cancel_real_delay_stat = "1" 
+            for control in config_list.controls:
+                if isinstance(control, ft.ListTile):
+                    config_name = control.title.content.value
+                    ping_text = control.trailing.content
+                    config_num = config_name.split("-")[0].strip()
+                    result = self.backend.ping_config(profile, config_num , self.ping_type)
 
+                    if self.cancel_real_delay_stat == "2":
+                        self.xray_button.disabled = False
+                        break
+
+                    ping_text.value = f"Ping: {result}"
+                    self.page.update()
+
+            # reset button txt
+            self.ping_all_button.text = "Ping All"
+            self.cancel_real_delay_stat = "0"
+            self.page.update()
+
+        threading.Thread(target=ping_worker, daemon=True).start()
+
+    # def on_hover_row(self, e, config):
+    #     container = e.control
+    #     if e.data == "true" and container.bgcolor != ft.colors.BLUE_GREY:
+    #         container.bgcolor = ft.colors.BLUE_GREY
+    #         container.border_radius = 10
+    #         self.page.update()
+    #     elif e.data == "false" and container.bgcolor != (ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT):
+    #         container.bgcolor = ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT
+    #         container.border_radius = 10
+    #         self.page.update()
+
+    def select_config(self, config, profile):
+        self.selected_config = config
+        try:
+            config_index = int(config.split("-")[0])
+            with open(f"./core/{self.backend.os_sys}/select.txt", "w") as f:
+                f.write(f"./subs/{profile}/{config_index}.json")
+            self.log(f"Config {config_index} selected.")
+        except Exception as e:
+            self.log(f"Error selecting config: {str(e)}")
+        self.refresh_profile_tab(profile)
+
+    def refresh_profile_tab(self, profile):
+        if profile == "all":
+            profiles = self.backend.get_profiles()
+            for profile in profiles:
+                for tab in self.tabs.tabs:
+                    if tab.text == profile:
+                        configs = self.backend.get_configs(profile)
+                        config_list = tab.content.controls[1]
+                        config_list.controls = [self.create_config_tile_with_ping(config, profile) for config in configs]
+        
+        for tab in self.tabs.tabs:
+            if tab.text == profile:
+                configs = self.backend.get_configs(profile)
+                config_list = tab.content.controls[1]
+                for control in config_list.controls:
+                    config_name = control.title.content.value
+                    # change color to selcted
+                    if config_name == self.selected_config:
+                        control.title.content.bgcolor = ft.colors.LIGHT_BLUE
+                    else:
+                        control.title.content.bgcolor = ft.colors.TRANSPARENT
+                # just add new config
+                for config in configs:
+                    if not any(control.title.content.value == config for control in config_list.controls):
+                        config_list.controls.append(self.create_config_tile_with_ping(config, profile))
+                        
+                break
+        self.page.update()
+
+    def show_import_dialog(self, e):
+        def import_sub(e):
+            name = name_field.value
+            url = url_field.value
+            if name and url:
+                self.backend.import_subscription(name, url)
+                self.add_profile_tab(name)
+                dialog.open = False
+                self.page.update()
+
+        name_field = ft.TextField(label="Profile Name")
+        url_field = ft.TextField(label="URL")
+        dialog = ft.AlertDialog(
+            title=ft.Text("Import Subscription"),
+            content=ft.Column([name_field, url_field], tight=True),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: self.close_dialog(dialog)),
+                ft.TextButton("Import", on_click=import_sub),
+            ],
+        )
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+
+    def close_dialog(self, dialog):
+        dialog.open = False
+        self.page.update()
+
+    def toggle_xray(self, e):
+        if self.backend.xray_process is None:
+            config_path = f"./core/{self.backend.os_sys}/select.txt"
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    selected_config = f.read().strip()
+                message = self.backend.run_xray(selected_config)
+                self.xray_button.text = "Stop Xray"
+                self.xray_button.style.bgcolor = {
+                    ft.ControlState.DEFAULT: ft.colors.RED,
+                    ft.ControlState.HOVERED: ft.colors.RED_700,
+                }
+                self.log(message)
+                threading.Thread(target=self.read_xray_logs, daemon=True).start()
+            else:
+                self.log("No config selected. Please select a config first.")
+        else:
+            message = self.backend.stop_xray()
+            self.xray_button.text = "Start Xray"
+            self.xray_button.style.bgcolor = {
+                ft.ControlState.DEFAULT: ft.colors.BLUE,
+                ft.ControlState.HOVERED: ft.colors.BLUE_700,
+            }
+            self.log(message)
+        self.page.update()
+
+    def read_xray_logs(self):
+        for log_line in self.backend.read_xray_logs():
+            self.log(log_line)
+
+    def change_theme(self, e):
+        selected_theme = e.control.value
+        # change theme
+        if selected_theme == "Dark":
+            self.page.theme_mode = ft.ThemeMode.DARK
+        else:
+            self.page.theme_mode = ft.ThemeMode.LIGHT
+        self.page.update()
+        self.refresh_profile_tab(profile="all")
+        print(f"Theme changed to: {selected_theme}")
+
+    def change_ping_type(self, e):
+        selected_ping_type = e.control.value
+        # select ping type
+        if selected_ping_type == "Real-delay":
+            self.ping_type = "Real-delay"
+        else:
+            self.ping_type = "Tcping"
+        print(f"Ping type changed to: {self.ping_type}")
+
+    def log(self, message):
+        self.log_buffer.append(message)
+        self.log_view.value = "\n".join(self.log_buffer)
+        self.page.update()
+    def update_subscription(self , profile) :
+        self.backend.update_subscription(profile)
+        self.refresh_profile_tab(profile)
+    def delete_subscription(self , profile) :
+        self.backend.delete_subscription(profile)
+        self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
+        self.refresh_profile_tab(profile)
+
+def main(page: ft.Page):
+    XrayClientUI(page)
+
+ft.app(target=main)
