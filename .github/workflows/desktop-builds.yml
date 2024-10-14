@@ -36,7 +36,7 @@ jobs:
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/flet-ui.exe ./release/
+          cp -r ./dist/GUI.exe ./release/
           cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
@@ -71,7 +71,7 @@ jobs:
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/flet-ui ./release/
+          cp -r ./dist/GUI ./release/
           cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-linux.zip ./release/
@@ -107,7 +107,7 @@ jobs:
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/flet-ui ./release/
+          cp -r ./dist/GUI ./release/
           cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-macos.zip ./release/
