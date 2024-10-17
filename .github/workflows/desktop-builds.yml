@@ -31,12 +31,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/flet-ui.exe ./release/
+          cp -r ./dist/GUI.exe ./release/
           cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
@@ -66,12 +66,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/flet-ui ./release/
+          cp -r ./dist/GUI ./release/
           cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-linux.zip ./release/
@@ -102,12 +102,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/flet-ui.py
+        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/flet-ui ./release/
+          cp -r ./dist/GUI ./release/
           cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-macos.zip ./release/
