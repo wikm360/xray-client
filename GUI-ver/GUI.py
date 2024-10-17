@@ -3,6 +3,7 @@ from backend import XrayBackend
 import threading
 import os
 from collections import deque
+import time
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
@@ -10,10 +11,12 @@ class XrayClientUI:
         self.backend = XrayBackend()
         self.page.title = "XC (Xray-Client)"
         self.page.theme_mode = ft.ThemeMode.DARK
+        self.backend.log_callback = self.log
         self.page.padding = 20
         self.selected_config = None
         self.real_delay_stat = None
         self.ping_all_button = None
+        self.close_event = self.backend.close_event
         self.cancel_real_delay_stat = "0"
         self.ping_type = "Tcping"
         self.tabs = ft.Tabs(
@@ -26,6 +29,8 @@ class XrayClientUI:
         self.create_ui()
 
     def create_ui(self):
+        threading.Thread(target=self.check_for_close_signal, daemon=True).start()
+
         system_info = self.backend.get_system_info()
 
         settings_icon_value = ft.icons.SETTINGS if self.page.theme_mode == ft.ThemeMode.DARK else ft.icons.SETTINGS_OUTLINED
@@ -248,17 +253,6 @@ class XrayClientUI:
 
         threading.Thread(target=ping_worker, daemon=True).start()
 
-    # def on_hover_row(self, e, config):
-    #     container = e.control
-    #     if e.data == "true" and container.bgcolor != ft.colors.BLUE_GREY:
-    #         container.bgcolor = ft.colors.BLUE_GREY
-    #         container.border_radius = 10
-    #         self.page.update()
-    #     elif e.data == "false" and container.bgcolor != (ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT):
-    #         container.bgcolor = ft.colors.LIGHT_BLUE if config == self.selected_config else ft.colors.TRANSPARENT
-    #         container.border_radius = 10
-    #         self.page.update()
-
     def select_config(self, config, profile):
         self.selected_config = config
         try:
@@ -333,14 +327,14 @@ class XrayClientUI:
             if os.path.exists(config_path):
                 with open(config_path, "r") as f:
                     selected_config = f.read().strip()
-                message = self.backend.run_xray(selected_config)
+                message = self.backend.run(selected_config , "tun")
                 self.xray_button.text = "Stop Xray"
                 self.xray_button.style.bgcolor = {
                     ft.ControlState.DEFAULT: ft.colors.RED,
                     ft.ControlState.HOVERED: ft.colors.RED_700,
                 }
                 self.log(message)
-                threading.Thread(target=self.read_xray_logs, daemon=True).start()
+                # threading.Thread(target=self.read_xray_logs, daemon=True).start()
             else:
                 self.log("No config selected. Please select a config first.")
         else:
@@ -378,9 +372,13 @@ class XrayClientUI:
         print(f"Ping type changed to: {self.ping_type}")
 
     def log(self, message):
-        self.log_buffer.append(message)
-        self.log_view.value = "\n".join(self.log_buffer)
+        if message is not None:
+            self.log_buffer.append(str(message))
+        else:
+            self.log_buffer.append("None")
+        self.log_view.value = "\n".join(filter(None, self.log_buffer))
         self.page.update()
+        
     def update_subscription(self , profile) :
         self.backend.update_subscription(profile)
         self.refresh_profile_tab(profile)
@@ -388,6 +386,13 @@ class XrayClientUI:
         self.backend.delete_subscription(profile)
         self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
         self.refresh_profile_tab(profile)
+
+    def check_for_close_signal(self):
+        while True:
+            if self.close_event.is_set():
+                print("Closing UI as per backend request...")
+                self.page.window.close()
+                break
 
 def main(page: ft.Page):
     XrayClientUI(page)
