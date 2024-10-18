@@ -321,22 +321,71 @@ class XrayClientUI:
         dialog.open = False
         self.page.update()
 
-    def toggle_xray(self, e):
-        if self.backend.xray_process is None:
-            config_path = f"./core/{self.backend.os_sys}/select.txt"
-            if os.path.exists(config_path):
-                with open(config_path, "r") as f:
-                    selected_config = f.read().strip()
-                message = self.backend.run(selected_config , "tun")
+    def show_sudo_password_dialog(self):
+        def submit_password(e):
+            password = password_field.value
+            dialog.open = False
+            self.page.update()
+            self.run_with_sudo(password)
+
+        password_field = ft.TextField(
+            label="Enter sudo password",
+            password=True,
+            on_submit=submit_password
+        )
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Sudo Authentication"),
+            content=ft.Column([
+                ft.Text("This operation requires root privileges."),
+                password_field
+            ]),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: self.close_dialog(dialog)),
+                ft.TextButton("Submit", on_click=submit_password),
+            ],
+        )
+
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+
+    def run_with_sudo(self, password):
+        config_path = f"./core/{self.backend.os_sys}/select.txt"
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                selected_config = f.read().strip()
+            message = self.backend.run(selected_config, "tun", sudo_password=password)
+            self.log(message)
+            if "Successfully" in message:
                 self.xray_button.text = "Stop Xray"
                 self.xray_button.style.bgcolor = {
                     ft.ControlState.DEFAULT: ft.colors.RED,
                     ft.ControlState.HOVERED: ft.colors.RED_700,
                 }
-                self.log(message)
-                # threading.Thread(target=self.read_xray_logs, daemon=True).start()
+            self.page.update()
+        else:
+            self.log("No config selected. Please select a config first.")
+
+    def toggle_xray(self, e):
+        if self.backend.xray_process is None:
+            if self.backend.os_sys == "linux":
+                self.show_sudo_password_dialog()
             else:
-                self.log("No config selected. Please select a config first.")
+                # Windows logic remains the same
+                config_path = f"./core/{self.backend.os_sys}/select.txt"
+                if os.path.exists(config_path):
+                    with open(config_path, "r") as f:
+                        selected_config = f.read().strip()
+                    message = self.backend.run(selected_config, "tun")
+                    self.xray_button.text = "Stop Xray"
+                    self.xray_button.style.bgcolor = {
+                        ft.ControlState.DEFAULT: ft.colors.RED,
+                        ft.ControlState.HOVERED: ft.colors.RED_700,
+                    }
+                    self.log(message)
+                else:
+                    self.log("No config selected. Please select a config first.")
         else:
             message = self.backend.stop_xray()
             self.xray_button.text = "Start Xray"
@@ -391,8 +440,9 @@ class XrayClientUI:
         while True:
             if self.close_event.is_set():
                 print("Closing UI as per backend request...")
-                self.page.window.close()
+                self.page.window_close()
                 break
+            time.sleep(0.1)
 
 def main(page: ft.Page):
     XrayClientUI(page)

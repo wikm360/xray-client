@@ -196,40 +196,17 @@ class XrayBackend:
             json.dump(data, file, indent=4)
         print("singbox-config write success")
 
-    def run_tun(self , config_path) :
-        with open(config_path, 'r') as file:
-            data = json.load(file)
-        dest = data['outbounds'][0]['settings']['vnext'][0]['address']
-        
-        self.write_sing_box_config(dest)
-
-        try :
-            singbox_path = f"./core/{self.os_sys}/sing-box"
-            creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
-            self.singbox_process = subprocess.Popen(
-                [singbox_path, 'run', '-c', f'./core/{self.os_sys}/singbox-config.json'],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                creationflags=creation_flags
-            )
-            self.log("Sing-box is running with config: ./singbox-config.json")
-            threading.Thread(target=self.read_process_output, args=(self.singbox_process, "Sing-box"), daemon=True).start()
-        except Exception as e :
-            return f"Error starting Xray or Sing-box: {str(e)}"
-
-    def run (self , connfig_path , type = "proxy") :
-        def is_admin():
+    def run(self, config_path, type="proxy", sudo_password=None):
+        def is_admin_windows():
             try:
                 return ctypes.windll.shell32.IsUserAnAdmin()
             except:
-                return False   
-        
-        def run_as_admin(argv=None):
+                return False
+            
+        def run_as_admin_windows(argv=None):
             if argv is None:
                 argv = sys.argv
             if hasattr(sys, '_MEIPASS'):
-                # Support pyinstaller wrapped program.
                 arguments = map(str, argv[1:])
             else:
                 arguments = map(str, argv)
@@ -237,24 +214,62 @@ class XrayBackend:
             executable = sys.executable
             ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, argument_line, None, 1)
             return ret > 32
-        
-        if type == "tun" :
-            if not is_admin() :
-                print("Restarting with admin privileges...")
-                if run_as_admin() :
-                    self.log("Successfully restarted with admin privileges.")
-                    self.close_event.set()
-                    # os._exit(0)
-                else :
-                    self.log("Faild to start with Admin")
-                    sys.exit(1)
-                return "starting with Admin"
-            else :
-                self.log("Running with admin privileges.")
-                self.run_xray(connfig_path)
-                self.run_tun(connfig_path)
-        else :
-            self.run_xray(connfig_path)
+
+        def is_root_linux():
+            return os.geteuid() == 0
+
+        def run_as_root_linux(password):
+            args = ['sudo', '-S'] + [sys.executable] + sys.argv
+            env = os.environ.copy()
+            try:
+                process = subprocess.Popen(
+                    args,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=env,
+                    universal_newlines=True
+                )
+                stdout, stderr = process.communicate(input=password + '\n')
+                if process.returncode == 0:
+                    return True, "Successfully restarted with root privileges."
+                else:
+                    return False, f"Failed to start with root privileges. Error: {stderr}"
+            except Exception as e:
+                return False, f"Error occurred: {str(e)}"
+
+        if type == "tun":
+            if self.os_sys == "linux":
+                if not is_root_linux():
+                    if sudo_password is None:
+                        return "Sudo password is required for TUN mode on Linux."
+                    success, message = run_as_root_linux(sudo_password)
+                    if success:
+                        self.close_event.set()
+                    return message
+                else:
+                    self.log("Running with root privileges.")
+                    self.run_xray(config_path)
+                    self.run_tun(config_path)
+                    return "Successfully"
+            elif self.os_sys == "win":
+                if not is_admin_windows():
+                    print("Restarting with admin privileges...")
+                    if run_as_admin_windows():
+                        self.log("Successfully restarted with admin privileges.")
+                        sys.exit(0)
+                        self.close_event.set()
+                    else:
+                        self.log("Failed to start with Admin")
+                        sys.exit(1)
+                    return "starting with Admin"
+            else:
+                self.log("Unsupported OS for TUN mode")
+                return "Unsupported OS for TUN mode"
+        else:
+            self.run_xray(config_path)
+
+        return "Xray started successfully"
                 
     def run_xray(self, config_path):
         try:
@@ -275,6 +290,28 @@ class XrayBackend:
             return "Xray Running"
         
         except Exception as e:
+            return f"Error starting Xray or Sing-box: {str(e)}"
+
+    def run_tun(self , config_path) :
+        with open(config_path, 'r') as file:
+            data = json.load(file)
+        dest = data['outbounds'][0]['settings']['vnext'][0]['address']
+        
+        self.write_sing_box_config(dest)
+
+        try :
+            singbox_path = f"./core/{self.os_sys}/sing-box"
+            creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
+            self.singbox_process = subprocess.Popen(
+                [singbox_path, 'run', '-c', f'./core/{self.os_sys}/singbox-config.json'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=creation_flags
+            )
+            self.log("Sing-box is running with config: ./singbox-config.json")
+            threading.Thread(target=self.read_process_output, args=(self.singbox_process, "Sing-box"), daemon=True).start()
+        except Exception as e :
             return f"Error starting Xray or Sing-box: {str(e)}"
 
     def read_process_output(self, process, name):
