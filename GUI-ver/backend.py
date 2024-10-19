@@ -243,6 +243,7 @@ class XrayBackend:
                 if not is_root_linux():
                     if sudo_password is None:
                         return "Sudo password is required for TUN mode on Linux."
+                    self.log("Rinning XC with Admin ...")
                     success, message = run_as_root_linux(sudo_password)
                     if success:
                         self.close_event.set()
