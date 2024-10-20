@@ -4,6 +4,7 @@ import threading
 import os
 from collections import deque
 import time
+import checkver
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
@@ -28,6 +29,11 @@ class XrayClientUI:
         )
         self.log_buffer = deque(maxlen=1000)  # Limit log entries
         self.create_ui()
+
+    def check_for_updates(self):
+        def run_update_check():
+            checkver.main(self.page)
+        threading.Thread(target=run_update_check, daemon=True).start()
 
     def create_ui(self):
         threading.Thread(target=self.check_for_close_signal, daemon=True).start()
@@ -132,6 +138,7 @@ class XrayClientUI:
         # add header and tabs to page
         self.page.add(header, self.tabs)
         self.log("XC - Created By wikm , 3ircle with ❤️")
+        self.check_for_updates()
 
 
     def add_profile_tab(self, profile):

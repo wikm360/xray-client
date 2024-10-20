@@ -258,12 +258,16 @@ class XrayBackend:
                     print("Restarting with admin privileges...")
                     if run_as_admin_windows():
                         self.log("Successfully restarted with admin privileges.")
-                        sys.exit(0)
+                        # sys.exit(0)
                         self.close_event.set()
                     else:
                         self.log("Failed to start with Admin")
                         sys.exit(1)
                     return "starting with Admin"
+                else :
+                    self.run_xray(config_path)
+                    self.run_tun(config_path)
+                    return "Successfully"
             else:
                 self.log("Unsupported OS for TUN mode")
                 return "Unsupported OS for TUN mode"
