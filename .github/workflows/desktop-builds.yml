@@ -81,11 +81,16 @@ jobs:
 
   build-fedora:
     runs-on: ubuntu-latest
-    container:
-      image: fedora:rawhide
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+          sudo systemctl start docker
+          sudo systemctl enable docker
 
       - name: Pull Fedora image
         run: docker pull fedora:latest
