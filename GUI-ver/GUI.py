@@ -372,6 +372,9 @@ class XrayClientUI:
             if os.path.exists(config_path):
                 with open(config_path, "r") as f:
                     selected_config = f.read().strip()
+                if not selected_config :
+                    self.log("first select one config...")
+                    return
                 if self.run_mode == "tun":
                     if self.backend.os_sys == "linux":
                         self.show_sudo_password_dialog(selected_config)

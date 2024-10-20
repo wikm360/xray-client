@@ -292,7 +292,7 @@ class XrayBackend:
             
             threading.Thread(target=self.read_process_output, args=(self.xray_process, "Xray"), daemon=True).start()
 
-            return "Xray Running"
+            return "Xray started successfully"
         
         except Exception as e:
             return f"Error starting Xray or Sing-box: {str(e)}"

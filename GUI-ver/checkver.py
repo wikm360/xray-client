@@ -2,26 +2,10 @@ import os
 import requests
 import zipfile
 from bs4 import BeautifulSoup
-import platform
 import flet as ft
 import threading
 from requests.exceptions import RequestException
-
-def os_det():
-    system_os = platform.system()
-    if system_os == "Windows":
-        return "win"
-    elif system_os == "Linux":
-        return "linux"
-    elif system_os == "Darwin":
-        return "macos"
-
-os_sys = os_det()
-root = "./"
-core_path = "./core"
-save_path = "./core.zip"
-url_check = f'https://netplusshop.ir/core/{os_sys}/index.html'
-download_url = f'https://netplusshop.ir/core/{os_sys}/core.zip'
+from const import *
 
 class UpdateChecker:
     def __init__(self, page: ft.Page):
@@ -31,13 +15,27 @@ class UpdateChecker:
         self.page.window_resizable = False
         self.update_available = False
         self.latest_version = None
+        self.app_latest_version = None
         self.update_window = None
         self.dialog = None
         self.download_dialog = None
 
     def check_ver(self):
         try:
-            response = requests.get(url_check, timeout=10)
+            response = requests.get(REPO_URL)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'html.parser')
+            version_text = soup.find(string=lambda text: text and "Release" in text)
+            self.app_latest_version = version_text.split(" ")[2].split("v")[1]
+        except requests.RequestException as e:
+            print(f"Error fetch repo : {e}")
+        if self.app_latest_version != APP_VERSION :
+            self.show_app_update_dialog()
+    
+        try:
+            response = requests.get(URL_CHECK, timeout=10)
+            print(response.text)
+            print(URL_CHECK)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -49,16 +47,9 @@ class UpdateChecker:
             else:
                 raise ValueError("Version information not found on the page")
 
-            current_version_file = os.path.join(core_path, "version.txt")
-            if os.path.exists(current_version_file):
-                with open(current_version_file, "r") as file:
-                    current_version = file.read().strip()
-            else:
-                current_version = None
-
-            if not os.path.exists(core_path) or current_version != self.latest_version:
+            if not os.path.exists(CORE_PATH) or XRAY_VERSION != self.latest_version:
                 self.update_available = True
-                self.show_update_dialog()
+                self.show_core_update_dialog()
             else:
                 print("Core is up to date.")
                 return
@@ -87,10 +78,10 @@ class UpdateChecker:
         self.dialog.open = True
         self.page.update()
 
-    def show_update_dialog(self):
+    def show_core_update_dialog(self):
         self.dialog = ft.AlertDialog(
-            title=ft.Text("Update Available" if os.path.exists(core_path) else "Core Not Installed"),
-            content=ft.Text(f"A new version ({self.latest_version}) is available. Do you want to update?" if os.path.exists(core_path) else "Core is not installed. Do you want to install it?"),
+            title=ft.Text("Update Available" if os.path.exists(CORE_PATH) else "Core Not Installed"),
+            content=ft.Text(f"A new core version ({self.latest_version}) is available. Do you want to update?" if os.path.exists(CORE_PATH) else "Core is not installed. Do you want to install it?"),
             actions=[
                 ft.TextButton("Cancel", on_click=self.close_dialog),
                 ft.TextButton("Update", on_click=self.start_update),
@@ -99,6 +90,23 @@ class UpdateChecker:
         self.page.overlay.append(self.dialog)
         self.dialog.open = True
         self.page.update()
+
+    def show_app_update_dialog(self):
+        self.dialog = ft.AlertDialog(
+            title=ft.Text("Update Available"),
+            content=ft.Text(f"A new App version ({self.app_latest_version}) is available. Do you want to update?"),
+            actions=[
+                ft.TextButton("Cancel", on_click=self.close_dialog),
+                ft.TextButton("Update", on_click=self.open_update_site),
+            ],
+        )
+        self.page.overlay.append(self.dialog)
+        self.dialog.open = True
+        self.page.update()
+
+    def open_update_site(self, e) :
+        self.page.launch_url(REPO_URL)
+        self.close_dialog(None)
 
     def close_dialog(self, e):
         if self.dialog:
@@ -152,7 +160,7 @@ class UpdateChecker:
 
     def finalize_update(self, status_text):
         try:
-            current_version_file = os.path.join(core_path, "version.txt")
+            current_version_file = os.path.join(CORE_PATH, "version.txt")
             with open(current_version_file, "w") as file:
                 file.write(self.latest_version)
             
@@ -166,13 +174,13 @@ class UpdateChecker:
 
     def download_core(self, status_text, progress_bar):
         try:
-            response = requests.get(download_url, stream=True, timeout=30)
+            response = requests.get(DOWNLOAD_URL, stream=True, timeout=30)
             response.raise_for_status()
             total_size = int(response.headers.get('content-length', 0))
             block_size = 16 * 1024
             downloaded = 0
 
-            with open(save_path, 'wb') as file:
+            with open(SAVE_PATH, 'wb') as file:
                 for data in response.iter_content(block_size):
                     size = file.write(data)
                     downloaded += size
@@ -190,10 +198,10 @@ class UpdateChecker:
         self.page.update()
         
         try:
-            with zipfile.ZipFile(save_path, 'r') as zip_ref:
-                zip_ref.extractall(root)
+            with zipfile.ZipFile(SAVE_PATH, 'r') as zip_ref:
+                zip_ref.extractall(ROOT)
             
-            os.remove(save_path)
+            os.remove(SAVE_PATH)
             progress_bar.value = 1
             self.page.update()
         except Exception as e:
