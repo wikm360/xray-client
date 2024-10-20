@@ -125,7 +125,12 @@ jobs:
             cp -r ./GUI-ver/subs ./release/ &&
             zip -r ./release/XC-fedora.zip ./release/
           "
-
+          
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: fedora-release
+          path: ./release/XC-fedora.zip
 
   build-macos:
     runs-on: macos-latest
