@@ -87,35 +87,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Pull Fedora image
+        run: docker pull fedora:latest
 
-      - name: Install binutils
-        run: sudo dnf install -y binutils
-
-      - name: Install dependencies
+      - name: Run build in Fedora container
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
-
-      - name: Zip executable and folders
-        run: |
-          mkdir release
-          cp -r ./dist/GUI ./release/
-          cp -r ./GUI-ver/subs ./release/
-          zip -r ./release/XC-fedora.zip ./release/
-
-      - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
-        with:
-          name: fedora-release
-          path: ./release/XC-fedora.zip
+          docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
+            dnf update -y &&
+            dnf install -y python3 python3-pip &&
+            pip3 install --upgrade pip &&
+            pip3 install pyinstaller &&
+            pip3 install -r requirements.txt &&
+            pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py &&
+            mkdir release &&
+            cp -r ./dist/GUI ./release/ &&
+            cp -r ./GUI-ver/subs ./release/ &&
+            zip -r ./release/XC-fedora.zip ./release/
+          "
 
   build-macos:
     runs-on: macos-latest
