@@ -12,15 +12,15 @@ import re
 import sys
 import ctypes
 import threading
-
+from const import *
 
 class XrayBackend:
     def __init__(self):
         self.os_sys = self.os_det()
         self.xray_process = None
         self.singbox_process = None
-        self.version = "4.0"
-        self.xray_version = "1.8.24"
+        self.version = APP_VERSION
+        self.xray_version = XRAY_VERSION
         self.log_callback = None
         self.close_event = threading.Event()
 

@@ -6,6 +6,7 @@ import flet as ft
 import threading
 from requests.exceptions import RequestException
 from const import *
+import subprocess
 
 class UpdateChecker:
     def __init__(self, page: ft.Page):
@@ -81,8 +82,8 @@ class UpdateChecker:
             title=ft.Text("Update Available" if os.path.exists(CORE_PATH) else "Core Not Installed"),
             content=ft.Text(f"A new core version ({self.latest_version}) is available. Do you want to update?" if os.path.exists(CORE_PATH) else "Core is not installed. Do you want to install it?"),
             actions=[
-                ft.TextButton("Cancel", on_click=self.close_dialog),
-                ft.TextButton("Update", on_click=self.start_update),
+                ft.TextButton("No", on_click=self.close_dialog),
+                ft.TextButton("Yes", on_click=self.start_update),
             ],
         )
         self.page.overlay.append(self.dialog)
@@ -115,6 +116,10 @@ class UpdateChecker:
             self.download_dialog.open = False
             self.page.dialog = None
             self.page.update()
+
+        self.page.title = "XC (Xray-Client)"
+        self.page.window_resizable = True
+        self.page.update()
 
     def close_update_window(self):
         if self.update_window:
@@ -165,6 +170,10 @@ class UpdateChecker:
             status_text.value = "Update completed successfully!"
             self.page.update()
 
+            if OS_SYS == "linux"  :
+                os.chmod("./core/linux/xray", 0o755)
+                os.chmod("./core/linux/sing-box", 0o755)
+
             self.close_dialog(None)
 
         except Exception as e:
@@ -209,6 +218,10 @@ def main(page: ft.Page):
     update_checker = UpdateChecker(page)
     update_checker.update_window = page.window
     update_checker.check_ver()
+
+    page.title = "XC (Xray-Client)"
+    page.window_resizable = True
+    page.update()
 
 if __name__ == "__main__":
     ft.app(target=main)
