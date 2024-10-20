@@ -34,8 +34,6 @@ class UpdateChecker:
     
         try:
             response = requests.get(URL_CHECK, timeout=10)
-            print(response.text)
-            print(URL_CHECK)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')

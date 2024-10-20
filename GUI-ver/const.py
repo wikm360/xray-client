@@ -11,7 +11,7 @@ def os_det():
 
 OS_SYS = os_det()
 
-APP_VERSION = "4.0"
+APP_VERSION = "4.1-46"
 XRAY_VERSION = "1.8.24"
 ROOT = "./"
 CORE_PATH = "./core"
