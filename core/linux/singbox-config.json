@@ -1,0 +1,179 @@
+{
+    "log": {
+        "level": "debug",
+        "timestamp": true,
+        "output": "sing-box.log",
+        "disabled": false
+    },
+    "dns": {
+        "servers": [
+            {
+                "tag": "remote",
+                "address": "tcp://8.8.8.8",
+                "strategy": "prefer_ipv4",
+                "detour": "proxy"
+            },
+            {
+                "tag": "local",
+                "address": "223.5.5.5",
+                "strategy": "prefer_ipv4",
+                "detour": "direct"
+            },
+            {
+                "tag": "local_local",
+                "address": "223.5.5.5",
+                "detour": "direct"
+            },
+            {
+                "tag": "block",
+                "address": "rcode://success"
+            }
+        ],
+        "rules": [
+            {
+                "server": "remote",
+                "clash_mode": "Global"
+            },
+            {
+                "server": "local_local",
+                "clash_mode": "Direct"
+            }
+        ],
+        "final": "remote"
+    },
+    "inbounds": [
+        {
+            "type": "tun",
+            "tag": "tun-in",
+            "interface_name": "singbox_tun",
+            "inet4_address": "172.19.0.1/30",
+            "mtu": 9000,
+            "auto_route": true,
+            "strict_route": true,
+            "stack": "mixed",
+            "sniff": true
+        }
+    ],
+    "outbounds": [
+        {
+            "type": "socks",
+            "tag": "proxy",
+            "server": "127.0.0.1",
+            "server_port": 1080,
+            "version": "5"
+        },
+        {
+            "type": "direct",
+            "tag": "direct"
+        },
+        {
+            "type": "block",
+            "tag": "block"
+        },
+        {
+            "type": "dns",
+            "tag": "dns_out"
+        }
+    ],
+    "route": {
+        "auto_detect_interface": true,
+        "rules": [
+            {
+                "outbound": "proxy",
+                "clash_mode": "Global"
+            },
+            {
+                "outbound": "direct",
+                "clash_mode": "Direct"
+            },
+            {
+                "outbound": "dns_out",
+                "protocol": [
+                    "dns"
+                ]
+            },
+            {
+                "outbound": "dns_out",
+                "port": [
+                    53
+                ],
+                "process_name": [
+                    "wv2ray.exe",
+                    "v2ray.exe",
+                    "SagerNet.exe",
+                    "v2ray.exe",
+                    "v2ray.exe",
+                    "xray",
+                    "xray.exe",
+                    "wxray.exe",
+                    "clash-windows-amd64-v3.exe",
+                    "clash-windows-amd64.exe",
+                    "clash-windows-386.exe",
+                    "clash.exe",
+                    "Clash.Meta-windows-amd64-compatible.exe",
+                    "Clash.Meta-windows-amd64.exe",
+                    "Clash.Meta-windows-386.exe",
+                    "Clash.Meta.exe",
+                    "clash.exe",
+                    "mihomo-windows-amd64.exe",
+                    "mihomo-windows-amd64-compatible.exe",
+                    "mihomo-windows-amd64.exe",
+                    "mihomo-windows-386.exe",
+                    "mihomo.exe",
+                    "clash.exe",
+                    "hysteria-windows-amd64.exe",
+                    "hysteria-windows-386.exe",
+                    "hysteria.exe",
+                    "naiveproxy.exe",
+                    "naive.exe",
+                    "tuic-client.exe",
+                    "tuic.exe",
+                    "juicity-client.exe",
+                    "juicity.exe",
+                    "hysteria-windows-amd64.exe",
+                    "hysteria-windows-386.exe",
+                    "hysteria.exe"
+                ]
+            },
+            {
+                "outbound": "direct",
+                "process_name": [
+                    "wv2ray.exe",
+                    "v2ray.exe",
+                    "xray",
+                    "xray.exe",
+                    "clash.exe",
+                    "mihomo.exe",
+                    "hysteria.exe",
+                    "naive.exe",
+                    "tuic.exe",
+                    "sing-box.exe",
+                    "juicity.exe"
+                ]
+            },
+            {
+                "outbound": "block",
+                "network": [
+                    "udp"
+                ],
+                "port": [
+                    443
+                ]
+            },
+            {
+                "outbound": "proxy",
+                "port_range": [
+                    "0:65535"
+                ]
+            }
+        ]
+    },
+    "experimental": {
+        "cache_file": {
+            "enabled": true
+        },
+        "clash_api": {
+            "external_controller": "127.0.0.1:9090"
+        }
+    }
+}

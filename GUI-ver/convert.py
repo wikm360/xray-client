@@ -86,12 +86,18 @@ def decode_vmess(link):
     xray_config = {
         "log": {"loglevel": "info"},
         "inbounds": [{
+            "tag": "socks",
             "port": 1080,
-            "protocol": "socks",
+            "listen": "127.0.0.1" ,
+            "protocol": "socks" ,
+            "sniffing": {
+                "enabled": True ,
+                "destOverride": ["http","tls"],
+                "routeOnly": False} ,
             "settings": {
                 "auth": "noauth",
-                "udp": True
-            }
+                "udp": True ,
+                "allowTransparent": False}
         }],
         "outbounds": [{
             "protocol": "vmess",
@@ -111,7 +117,52 @@ def decode_vmess(link):
             },
             "streamSettings": stream_settings,
             "tag": "proxy"
-        }]
+        }],
+        "dns": {
+            "hosts": {
+            "dns.google": "8.8.8.8"
+            },
+            "servers": [
+            {
+                "address": "223.5.5.5",
+                "domains": [
+                "wikm.ir"
+                ]
+            },
+            "1.1.1.1",
+            "8.8.8.8",
+            "https://dns.google/dns-query",
+            {
+                "address": "223.5.5.5",
+                "domains": [
+                address
+                ]
+            }
+            ]
+        },
+        "routing": {
+            "domainStrategy": "AsIs",
+            "rules": [
+            {
+                "type": "field",
+                "inboundTag": [
+                "api"
+                ],
+                "outboundTag": "api"
+            },
+            {
+                "type": "field",
+                "port": "443",
+                "network": "udp",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "port": "0-65535",
+                "outboundTag": "proxy"
+            }
+            ]
+        }
     }
 
     return json.dumps(xray_config, indent=4), config_name
@@ -184,7 +235,7 @@ def decode_vless(link):
     xray_config = {
         "log": {"loglevel": "info"},
         "inbounds": [{
-            "port": 1080, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}
+            "tag": "socks", "port": 1080, "listen": "127.0.0.1" , "protocol": "socks" , "sniffing": {"enabled": True ,"destOverride": ["http","tls"],"routeOnly": False} , "settings": {"auth": "noauth", "udp": True , "allowTransparent": False}
         }],
         "outbounds": [{
             "protocol": "vless",
@@ -195,7 +246,52 @@ def decode_vless(link):
                 }]
             },
             "streamSettings": stream_settings
-        }]
+        }],
+        "dns": {
+            "hosts": {
+            "dns.google": "8.8.8.8"
+            },
+            "servers": [
+            {
+                "address": "223.5.5.5",
+                "domains": [
+                "wikm.ir"
+                ]
+            },
+            "1.1.1.1",
+            "8.8.8.8",
+            "https://dns.google/dns-query",
+            {
+                "address": "223.5.5.5",
+                "domains": [
+                address
+                ]
+            }
+            ]
+        },
+        "routing": {
+            "domainStrategy": "AsIs",
+            "rules": [
+            {
+                "type": "field",
+                "inboundTag": [
+                "api"
+                ],
+                "outboundTag": "api"
+            },
+            {
+                "type": "field",
+                "port": "443",
+                "network": "udp",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "port": "0-65535",
+                "outboundTag": "proxy"
+            }
+            ]
+        }
     }
     return json.dumps(xray_config, indent=4)
 

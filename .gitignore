@@ -12,3 +12,7 @@ GUI-ver/test.py
 subs/3ircle
 GUI-ver/subs/3ircle
 core/win/select.txt
+subs/
+*.log
+cache.db
+core/win/select.txt

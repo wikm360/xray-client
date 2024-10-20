@@ -8,14 +8,21 @@ from pathlib import Path
 import convert
 import shutil
 import time
-
+import re
+import sys
+import ctypes
+import threading
+from const import *
 
 class XrayBackend:
     def __init__(self):
         self.os_sys = self.os_det()
         self.xray_process = None
-        self.version = "4.0"
-        self.xray_version = "1.8.24"
+        self.singbox_process = None
+        self.version = APP_VERSION
+        self.xray_version = XRAY_VERSION
+        self.log_callback = None
+        self.close_event = threading.Event()
 
     def os_det(self):
         system_os = platform.system()
@@ -131,7 +138,7 @@ class XrayBackend:
             if self.xray_process:
                 self.stop_xray()
 
-            self.run_xray(config_path)
+            self.run(config_path , "proxy")
             time.sleep(2)
             try:
                 s_time = time.time()
@@ -148,11 +155,132 @@ class XrayBackend:
             finally:
                 self.stop_xray()
 
+    def write_sing_box_config (self , dest) :
+        def is_ip(address):
+            ip_pattern = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+            return ip_pattern.match(address) is not None
+        
+        file_path = f"./core/{self.os_sys}/singbox-config.json"
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+        
+        if is_ip(dest):
+            for rule in data['dns']['rules']:
+                if 'domain' in rule:
+                    del rule['domain']
+            data['dns']['rules'] = [
+                {
+                    "server": "remote",
+                    "clash_mode": "Global"
+                },
+                {
+                    "server": "local_local",
+                    "clash_mode": "Direct"
+                }
+            ]
+        else :
+            domain_found = False
+            for rule in data['dns']['rules']:
+                if 'domain' in rule:
+                    rule['domain'] = [dest]
+                    domain_found = True
+                    break
+            
+            if not domain_found:
+                data['dns']['rules'].insert(0, {
+                    "server": "local_local",
+                    "domain": [dest]
+                })
+        
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+        print("singbox-config write success")
 
+    def run(self, config_path, type="proxy", sudo_password=None):
+        def is_admin_windows():
+            try:
+                return ctypes.windll.shell32.IsUserAnAdmin()
+            except:
+                return False
+            
+        def run_as_admin_windows(argv=None):
+            if argv is None:
+                argv = sys.argv
+            if hasattr(sys, '_MEIPASS'):
+                arguments = map(str, argv[1:])
+            else:
+                arguments = map(str, argv)
+            argument_line = u' '.join(arguments)
+            executable = sys.executable
+            ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", executable, argument_line, None, 1)
+            return ret > 32
+
+        def is_root_linux():
+            return os.geteuid() == 0
+
+        def run_as_root_linux(password):
+            args = ['sudo', '-S'] + [sys.executable] + sys.argv
+            env = os.environ.copy()
+            try:
+                process = subprocess.Popen(
+                    args,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=env,
+                    universal_newlines=True
+                )
+                stdout, stderr = process.communicate(input=password + '\n')
+                if process.returncode == 0:
+                    return True, "Successfully restarted with root privileges."
+                else:
+                    return False, f"Failed to start with root privileges. Error: {stderr}"
+            except Exception as e:
+                return False, f"Error occurred: {str(e)}"
+
+        if type == "tun":
+            if self.os_sys == "linux":
+                if not is_root_linux():
+                    if sudo_password is None:
+                        return "Sudo password is required for TUN mode on Linux."
+                    self.log("Rinning XC with Admin ...")
+                    success, message = run_as_root_linux(sudo_password)
+                    if success:
+                        self.close_event.set()
+                    return message
+                else:
+                    self.log("Running with root privileges.")
+                    self.run_xray(config_path)
+                    self.run_tun(config_path)
+                    return "Successfully"
+            elif self.os_sys == "win":
+                if not is_admin_windows():
+                    print("Restarting with admin privileges...")
+                    if run_as_admin_windows():
+                        self.log("Successfully restarted with admin privileges.")
+                        # sys.exit(0)
+                        self.close_event.set()
+                    else:
+                        self.log("Failed to start with Admin")
+                        sys.exit(1)
+                    return "starting with Admin"
+                else :
+                    self.run_xray(config_path)
+                    self.run_tun(config_path)
+                    return "Successfully"
+            else:
+                self.log("Unsupported OS for TUN mode")
+                return "Unsupported OS for TUN mode"
+        else:
+            self.run_xray(config_path)
+
+        return "Xray started successfully"
+                
     def run_xray(self, config_path):
         try:
             xray_path = f"./core/{self.os_sys}/xray"
             creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
+            
             self.xray_process = subprocess.Popen(
                 [xray_path, '-config', config_path],
                 stdout=subprocess.PIPE,
@@ -160,21 +288,58 @@ class XrayBackend:
                 text=True,
                 creationflags=creation_flags
             )
-            return f"Xray is running with config: {config_path}"
+            self.log("Xray is running with config: " + config_path)
+            
+            threading.Thread(target=self.read_process_output, args=(self.xray_process, "Xray"), daemon=True).start()
+
+            return "Xray started successfully"
+        
         except Exception as e:
-            return f"Error starting Xray: {str(e)}"
+            return f"Error starting Xray or Sing-box: {str(e)}"
+
+    def run_tun(self , config_path) :
+        with open(config_path, 'r') as file:
+            data = json.load(file)
+        dest = data['outbounds'][0]['settings']['vnext'][0]['address']
+        
+        self.write_sing_box_config(dest)
+
+        try :
+            singbox_path = f"./core/{self.os_sys}/sing-box"
+            creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
+            self.singbox_process = subprocess.Popen(
+                [singbox_path, 'run', '-c', f'./core/{self.os_sys}/singbox-config.json'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=creation_flags
+            )
+            self.log("Sing-box is running with config: ./singbox-config.json")
+            threading.Thread(target=self.read_process_output, args=(self.singbox_process, "Sing-box"), daemon=True).start()
+        except Exception as e :
+            return f"Error starting Xray or Sing-box: {str(e)}"
+
+    def read_process_output(self, process, name):
+        for line in process.stdout:
+            if line:
+                self.log(f"{name}: {line.strip()}")
+        for line in process.stderr:
+            if line:
+                self.log(f"{name} Error: {line.strip()}")
 
     def stop_xray(self):
         if self.xray_process:
             self.xray_process.terminate()
             self.xray_process = None
-            return "Xray has been stopped."
-        return "Xray is not running."
+            self.log("Xray has been stopped.")
+        if self.singbox_process:
+            self.singbox_process.terminate()
+            self.singbox_process = None
+            self.log("Sing-box has been stopped.")
+        return "Xray and Sing-box are not running."
 
-    def read_xray_logs(self):
-        while self.xray_process:
-            output = self.xray_process.stdout.readline()
-            if output == '' and self.xray_process.poll() is not None:
-                break
-            if output:
-                yield output.strip()
+    def log(self, message):
+        if self.log_callback:
+            self.log_callback(message)
+        else:
+            print(message)
