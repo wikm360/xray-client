@@ -37,7 +37,6 @@ jobs:
         run: |
           mkdir release
           cp -r ./dist/GUI.exe ./release/
-          cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
@@ -72,7 +71,6 @@ jobs:
         run: |
           mkdir release
           cp -r ./dist/GUI ./release/
-          cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-linux.zip ./release/
 
@@ -108,7 +106,6 @@ jobs:
         run: |
           mkdir release
           cp -r ./dist/GUI ./release/
-          cp -r ./core ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-macos.zip ./release/
 
