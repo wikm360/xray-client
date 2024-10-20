@@ -85,10 +85,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Uninstall conflicting containerd packages
+        run: sudo apt-get remove -y containerd containerd.io
+
+      - name: Install Docker dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+
+      - name: Add Docker’s official GPG key and repository
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
       - name: Install Docker
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io
+          sudo apt-get install -y docker-ce
+
+      - name: Start Docker
+        run: |
           sudo systemctl start docker
           sudo systemctl enable docker
 
@@ -109,6 +125,7 @@ jobs:
             cp -r ./GUI-ver/subs ./release/ &&
             zip -r ./release/XC-fedora.zip ./release/
           "
+
 
   build-macos:
     runs-on: macos-latest
