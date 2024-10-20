@@ -80,7 +80,9 @@ jobs:
           path: ./release/XC-linux.zip
 
   build-fedora:
-    runs-on: fedora-latest
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:rawhide
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
