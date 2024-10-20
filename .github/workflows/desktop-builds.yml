@@ -48,7 +48,6 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
-    needs: build-windows
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -82,7 +81,6 @@ jobs:
 
   build-fedora:
     runs-on: ubuntu-latest
-    needs: build-windows
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -92,6 +90,9 @@ jobs:
 
       - name: Pull Fedora image
         run: docker pull fedora:latest
+
+      - name: Install binutils on Fedora
+        run: sudo dnf install -y binutils
 
       - name: Run build in Fedora container
         run: |
@@ -116,7 +117,6 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
-    needs: build-windows
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
