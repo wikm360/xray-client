@@ -31,7 +31,7 @@ class XrayClientUI:
         self.log_buffer = deque(maxlen=1000)  # Limit log entries
         self.create_ui()
     
-    def read_settinng (type , e) :
+    def read_settinng (self , type) :
         default_settings = {"ping": "Tcping", "theme": "dark"}
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
@@ -63,13 +63,13 @@ class XrayClientUI:
                 file.write(data)
         if type == "ping" :
             return ping
-        else :
+        elif type == "theme" :
             if theme == "dark" :
                 return ft.ThemeMode.DARK
-            else :
+            elif theme == "light" :
                 return ft.ThemeMode.LIGHT
 
-    def write_setting(type , value , e=None):
+    def write_setting(self , type , value):
         default_settings = {"ping": "Tcping", "theme": "dark"}
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
@@ -555,4 +555,14 @@ class XrayClientUI:
 def main(page: ft.Page):
     XrayClientUI(page)
 
-ft.app(target=main)
+if __name__ == "__main__":
+    try:
+        import logging
+        logging.basicConfig(filename='xc_debug.log', level=logging.DEBUG)
+        logging.debug("Starting application...")
+        
+        ft.app(target=main)
+    except Exception as e:
+        logging.error(f"Error starting application: {str(e)}")
+        with open('error.log', 'w') as f:
+            f.write(str(e))
