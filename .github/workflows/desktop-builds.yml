@@ -231,7 +231,6 @@ jobs:
           mkdir -p release/XC
           cp -R ./dist/XC.app release/XC/
           cp -R ./GUI-ver/subs release/XC/
-          cp -R ./GUI-ver/core release/XC/
           
       - name: Create ZIP archive
         run: |
