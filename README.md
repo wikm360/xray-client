@@ -5,13 +5,14 @@ A simple CLI / GUI Xray client for manage subscription and more based on python
 
 
 ## Features
-
+- Run with proxy and TUN
 - import subscriptions
 - manage subscriptions (Delete , Update)
 - Tcping or Real-delay for all configs
 - Dark / Light mode
 - run latest Xray on your configs
 - Easy to use and for all Windows , linux , macos Operating  system
+- Debug mode
 
 
 ## Screenshots
