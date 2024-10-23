@@ -1,4 +1,5 @@
 {
-    "ping": "Real-delay",
-    "theme": "dark"
+    "ping": "Tcping",
+    "theme": "dark",
+    "debug": "off"
 }

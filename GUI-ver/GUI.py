@@ -6,6 +6,7 @@ from collections import deque
 import time
 import checkver
 import json
+import logging
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
@@ -13,6 +14,7 @@ class XrayClientUI:
         self.backend = XrayBackend()
         self.page.title = "XC (Xray-Client)"
         self.page.theme_mode = self.read_settinng("theme")
+        self.debug_mod = self.read_settinng("debug")
         self.backend.log_callback = self.log
         self.page.padding = 20
         self.selected_config = None
@@ -31,8 +33,9 @@ class XrayClientUI:
         self.log_buffer = deque(maxlen=1000)  # Limit log entries
         self.create_ui()
     
-    def read_settinng (self , type) :
-        default_settings = {"ping": "Tcping", "theme": "dark"}
+    @staticmethod
+    def read_settinng (type) :
+        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off"}
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
                 f = file.read()
@@ -41,16 +44,19 @@ class XrayClientUI:
                         data = json.loads(f)
                         ping = data.get("ping", default_settings["ping"])
                         theme = data.get("theme", default_settings["theme"])
+                        debug = data.get("debug", default_settings["debug"])
                     except json.JSONDecodeError:
 
                         print("Error decoding JSON, using default settings.")
                         ping = default_settings["ping"]
                         theme = default_settings["theme"]
+                        debug = default_settings["debug"]
                 else:
 
                     print("File is empty, using default settings.")
                     ping = default_settings["ping"]
                     theme = default_settings["theme"]
+                    debug = default_settings["debug"]
                     with open("./setting.json" , "w") as file :
                         data = json.dumps(default_settings , indent=4)
                         file.write(data)
@@ -58,6 +64,7 @@ class XrayClientUI:
             print("File not found, using default settings.")
             ping = default_settings["ping"]
             theme = default_settings["theme"]
+            debug = default_settings["debug"]
             with open("./setting.json" , "w") as file :
                 data = json.dumps(default_settings , indent=4)
                 file.write(data)
@@ -68,9 +75,11 @@ class XrayClientUI:
                 return ft.ThemeMode.DARK
             elif theme == "light" :
                 return ft.ThemeMode.LIGHT
+        elif type == "debug" :
+            return debug
 
     def write_setting(self , type , value):
-        default_settings = {"ping": "Tcping", "theme": "dark"}
+        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" }
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
                 f = file.read()
@@ -92,6 +101,8 @@ class XrayClientUI:
             data["ping"] = value
         elif type == "theme":
             data["theme"] = value
+        elif type == "debug" :
+            data["debug"] = value
 
         with open("./setting.json", "w") as file:
             json_data = json.dumps(data, indent=4)
@@ -250,14 +261,26 @@ class XrayClientUI:
             expand=True,
         )
 
+        debug_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option("on"),
+                ft.dropdown.Option("off"),
+            ],
+            value=self.debug_mod,
+            on_change=self.change_debug,
+            expand=True,
+        )
+
         settings_dialog = ft.AlertDialog(
             title=ft.Text("Settings"),
             content=ft.Container(
                 content=ft.Column(
                     [
-                        ft.Row([ft.Text("Ping Type:"), ping_type_dropdown], 
+                        ft.Row([ft.Text("Ping Type : "), ping_type_dropdown], 
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        ft.Row([ft.Text("Theme:"), theme_dropdown], 
+                        ft.Row([ft.Text("Theme : "), theme_dropdown], 
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("debug : "), debug_dropdown], 
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     ],
                     spacing=20,
@@ -506,6 +529,15 @@ class XrayClientUI:
         for log_line in self.backend.read_xray_logs():
             self.log(log_line)
 
+    def change_debug(self , e) :
+        selected_debug = e.control.value
+        if selected_debug == "on":
+            self.debug_mod = "on"
+            self.write_setting("debug" , "on")
+        elif selected_debug == "off":
+            self.debug_mod = "off"
+            self.write_setting("debug" , "off")
+
     def change_theme(self, e):
         selected_theme = e.control.value
         if selected_theme == "Dark":
@@ -557,9 +589,9 @@ def main(page: ft.Page):
 
 if __name__ == "__main__":
     try:
-        import logging
-        logging.basicConfig(filename='xc_debug.log', level=logging.DEBUG)
-        logging.debug("Starting application...")
+        if XrayClientUI.read_settinng("debug") == "on" :
+            logging.basicConfig(filename='xc_debug.log', level=logging.DEBUG)
+            logging.debug("Starting application...")
         
         ft.app(target=main)
     except Exception as e:
