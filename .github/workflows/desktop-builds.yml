@@ -46,7 +46,7 @@ jobs:
           name: windows-release
           path: ./release/XC-windows.zip
 
-  build-linux:
+  build-ubuntu:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -71,13 +71,13 @@ jobs:
           mkdir release
           cp -r ./dist/GUI ./release/
           cp -r ./GUI-ver/subs ./release/
-          zip -r ./release/XC-linux.zip ./release/
+          zip -r ./release/XC-ubuntu.zip ./release/
 
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
-          name: linux-release
-          path: ./release/XC-linux.zip
+          name: ubuntu-release
+          path: ./release/XC-ubuntu.zip
 
   build-fedora:
     runs-on: ubuntu-latest
@@ -142,33 +142,119 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
           pip install pillow
           pip install -r requirements.txt
-
-      - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
-
-      - name: Zip executable and folders
+          pip install pyobjc-core pyobjc-framework-Cocoa # Required for macOS GUI
+          
+      - name: Create debug logger
         run: |
-          mkdir release
-          cp -r ./dist/GUI ./release/
-          cp -r ./GUI-ver/subs ./release/
-          zip -r ./release/XC-macos.zip ./release/
-
+          echo '
+          import logging
+          import sys
+          
+          # Setup logging
+          logging.basicConfig(
+              level=logging.DEBUG,
+              format="%(asctime)s [%(levelname)s] %(message)s",
+              handlers=[
+                  logging.FileHandler("debug.log"),
+                  logging.StreamHandler(sys.stdout)
+              ]
+          )
+          
+          # Rest of your imports
+          import flet as ft
+          from backend import XrayBackend
+          import threading
+          import os
+          from collections import deque
+          import time
+          import checkver
+          import json
+          
+          logging.debug("Starting imports completed")
+          
+          # Your XrayClientUI class here
+          class XrayClientUI:
+              def __init__(self, page: ft.Page):
+                  logging.debug("Initializing XrayClientUI")
+                  # Rest of your init code
+          
+          def main(page: ft.Page):
+              try:
+                  logging.debug("Starting main function")
+                  XrayClientUI(page)
+              except Exception as e:
+                  logging.error(f"Error in main: {str(e)}", exc_info=True)
+          
+          if __name__ == "__main__":
+              try:
+                  logging.debug("Starting application")
+                  ft.app(target=main)
+              except Exception as e:
+                  logging.error(f"Application failed to start: {str(e)}", exc_info=True)
+          ' > ./GUI-ver/GUI.py
+          
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller --clean --windowed \
+            --icon=./GUI-ver/icon.ico \
+            --collect-all flet \
+            --name XC \
+            ./GUI-ver/GUI.py
+          
+      - name: Set executable permissions
+        run: |
+          chmod +x ./dist/XC.app/Contents/MacOS/XC
+          
+      - name: Test executable
+        run: |
+          # Start the app in background
+          ./dist/XC.app/Contents/MacOS/XC &
+          # Wait a bit for the app to start
+          sleep 5
+          # Check if process is running
+          ps aux | grep XC
+          # Capture any logs
+          if [ -f debug.log ]; then
+            echo "Debug log contents:"
+            cat debug.log
+          fi
+          
+      - name: Create release directory and copy files
+        run: |
+          mkdir -p release/XC
+          cp -R ./dist/XC.app release/XC/
+          cp -R ./GUI-ver/subs release/XC/
+          
+      - name: Create ZIP archive
+        run: |
+          cd release
+          zip -r XC-macos.zip XC
+          cd ..
+          
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
           name: macos-release
           path: ./release/XC-macos.zip
+          
+      - name: Upload Debug Logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: debug-logs
+          path: |
+            debug.log
+            ./dist/XC.app/Contents/MacOS/debug.log
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-linux, build-fedora, build-macos]
+    needs: [build-windows, build-ubuntu, build-fedora, build-macos]
     runs-on: ubuntu-latest
 
     permissions:
@@ -188,8 +274,8 @@ jobs:
       - name: Download Release Assets
         uses: actions/download-artifact@v3
         with:
-          name: linux-release
-          path: ./release/linux/
+          name: ubuntu-release
+          path: ./release/ubuntu/
 
       - name: Download Release Assets
         uses: actions/download-artifact@v3
@@ -226,7 +312,7 @@ jobs:
           
           gh release upload
           "v4.1-${{ github.run_number }}"
-          ./release/linux/XC-linux.zip
+          ./release/ubuntu/XC-ubuntu.zip
           --repo "${{ github.repository }}"
           
           gh release upload

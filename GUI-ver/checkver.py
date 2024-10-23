@@ -7,12 +7,13 @@ import threading
 from requests.exceptions import RequestException
 from const import *
 import subprocess
+import json
 
 class UpdateChecker:
     def __init__(self, page: ft.Page):
         self.page = page
         self.page.title = "XC Update Checker"
-        self.page.theme_mode = ft.ThemeMode.DARK
+        self.page.theme_mode = self.read_settinng("theme")
         self.page.window_resizable = False
         self.update_available = False
         self.latest_version = None
@@ -20,6 +21,44 @@ class UpdateChecker:
         self.update_window = None
         self.dialog = None
         self.download_dialog = None
+
+    def read_settinng (self , type) :
+        default_settings = {"ping": "Tcping", "theme": "dark"}
+        if os.path.exists("./setting.json"):
+            with open("./setting.json", "r") as file:
+                f = file.read()
+                if f.strip():
+                    try:
+                        data = json.loads(f)
+                        ping = data.get("ping", default_settings["ping"])
+                        theme = data.get("theme", default_settings["theme"])
+                    except json.JSONDecodeError:
+
+                        print("Error decoding JSON, using default settings.")
+                        ping = default_settings["ping"]
+                        theme = default_settings["theme"]
+                else:
+
+                    print("File is empty, using default settings.")
+                    ping = default_settings["ping"]
+                    theme = default_settings["theme"]
+                    with open("./setting.json" , "w") as file :
+                        data = json.dumps(default_settings , indent=4)
+                        file.write(data)
+        else:
+            print("File not found, using default settings.")
+            ping = default_settings["ping"]
+            theme = default_settings["theme"]
+            with open("./setting.json" , "w") as file :
+                data = json.dumps(default_settings , indent=4)
+                file.write(data)
+        if type == "ping" :
+            return ping
+        elif type == "theme" :
+            if theme == "dark" :
+                return ft.ThemeMode.DARK
+            elif theme == "light" :
+                return ft.ThemeMode.LIGHT
 
     def check_ver(self):
         try:

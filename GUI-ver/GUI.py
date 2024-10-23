@@ -5,13 +5,16 @@ import os
 from collections import deque
 import time
 import checkver
+import json
+import logging
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
         self.page = page
         self.backend = XrayBackend()
         self.page.title = "XC (Xray-Client)"
-        self.page.theme_mode = ft.ThemeMode.DARK
+        self.page.theme_mode = self.read_settinng("theme")
+        self.debug_mod = self.read_settinng("debug")
         self.backend.log_callback = self.log
         self.page.padding = 20
         self.selected_config = None
@@ -19,7 +22,7 @@ class XrayClientUI:
         self.ping_all_button = None
         self.close_event = self.backend.close_event
         self.cancel_real_delay_stat = "0"
-        self.ping_type = "Tcping"
+        self.ping_type = self.read_settinng("ping")
         self.run_mode = "proxy"  # Default mode
         self.tabs = ft.Tabs(
             selected_index=0,
@@ -29,6 +32,81 @@ class XrayClientUI:
         )
         self.log_buffer = deque(maxlen=1000)  # Limit log entries
         self.create_ui()
+    
+    @staticmethod
+    def read_settinng (type) :
+        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off"}
+        if os.path.exists("./setting.json"):
+            with open("./setting.json", "r") as file:
+                f = file.read()
+                if f.strip():
+                    try:
+                        data = json.loads(f)
+                        ping = data.get("ping", default_settings["ping"])
+                        theme = data.get("theme", default_settings["theme"])
+                        debug = data.get("debug", default_settings["debug"])
+                    except json.JSONDecodeError:
+
+                        print("Error decoding JSON, using default settings.")
+                        ping = default_settings["ping"]
+                        theme = default_settings["theme"]
+                        debug = default_settings["debug"]
+                else:
+
+                    print("File is empty, using default settings.")
+                    ping = default_settings["ping"]
+                    theme = default_settings["theme"]
+                    debug = default_settings["debug"]
+                    with open("./setting.json" , "w") as file :
+                        data = json.dumps(default_settings , indent=4)
+                        file.write(data)
+        else:
+            print("File not found, using default settings.")
+            ping = default_settings["ping"]
+            theme = default_settings["theme"]
+            debug = default_settings["debug"]
+            with open("./setting.json" , "w") as file :
+                data = json.dumps(default_settings , indent=4)
+                file.write(data)
+        if type == "ping" :
+            return ping
+        elif type == "theme" :
+            if theme == "dark" :
+                return ft.ThemeMode.DARK
+            elif theme == "light" :
+                return ft.ThemeMode.LIGHT
+        elif type == "debug" :
+            return debug
+
+    def write_setting(self , type , value):
+        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" }
+        if os.path.exists("./setting.json"):
+            with open("./setting.json", "r") as file:
+                f = file.read()
+                
+                if f.strip():
+                    try:
+                        data = json.loads(f)
+                    except json.JSONDecodeError:
+                        print("Error decoding JSON, using default settings.")
+                        data = default_settings
+                else:
+                    print("File is empty, using default settings.")
+                    data = default_settings
+        else:
+            print("File not found, using default settings.")
+            data = default_settings
+
+        if type == "ping":
+            data["ping"] = value
+        elif type == "theme":
+            data["theme"] = value
+        elif type == "debug" :
+            data["debug"] = value
+
+        with open("./setting.json", "w") as file:
+            json_data = json.dumps(data, indent=4)
+            file.write(json_data)
 
     def check_for_updates(self):
         def run_update_check():
@@ -183,14 +261,26 @@ class XrayClientUI:
             expand=True,
         )
 
+        debug_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option("on"),
+                ft.dropdown.Option("off"),
+            ],
+            value=self.debug_mod,
+            on_change=self.change_debug,
+            expand=True,
+        )
+
         settings_dialog = ft.AlertDialog(
             title=ft.Text("Settings"),
             content=ft.Container(
                 content=ft.Column(
                     [
-                        ft.Row([ft.Text("Ping Type:"), ping_type_dropdown], 
+                        ft.Row([ft.Text("Ping Type : "), ping_type_dropdown], 
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        ft.Row([ft.Text("Theme:"), theme_dropdown], 
+                        ft.Row([ft.Text("Theme : "), theme_dropdown], 
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("debug : "), debug_dropdown], 
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     ],
                     spacing=20,
@@ -439,24 +529,35 @@ class XrayClientUI:
         for log_line in self.backend.read_xray_logs():
             self.log(log_line)
 
+    def change_debug(self , e) :
+        selected_debug = e.control.value
+        if selected_debug == "on":
+            self.debug_mod = "on"
+            self.write_setting("debug" , "on")
+        elif selected_debug == "off":
+            self.debug_mod = "off"
+            self.write_setting("debug" , "off")
+
     def change_theme(self, e):
         selected_theme = e.control.value
-        # change theme
         if selected_theme == "Dark":
             self.page.theme_mode = ft.ThemeMode.DARK
+            self.write_setting("theme" , "dark")
         else:
             self.page.theme_mode = ft.ThemeMode.LIGHT
+            self.write_setting("theme" , "light")
         self.page.update()
         self.refresh_profile_tab(profile="all")
         print(f"Theme changed to: {selected_theme}")
 
     def change_ping_type(self, e):
         selected_ping_type = e.control.value
-        # select ping type
         if selected_ping_type == "Real-delay":
             self.ping_type = "Real-delay"
+            self.write_setting("ping" , "Real-delay")
         else:
             self.ping_type = "Tcping"
+            self.write_setting("ping" , "Tcping")
         print(f"Ping type changed to: {self.ping_type}")
 
     def log(self, message):
@@ -486,4 +587,14 @@ class XrayClientUI:
 def main(page: ft.Page):
     XrayClientUI(page)
 
-ft.app(target=main)
+if __name__ == "__main__":
+    try:
+        if XrayClientUI.read_settinng("debug") == "on" :
+            logging.basicConfig(filename='xc_debug.log', level=logging.DEBUG)
+            logging.debug("Starting application...")
+        
+        ft.app(target=main)
+    except Exception as e:
+        logging.error(f"Error starting application: {str(e)}")
+        with open('error.log', 'w') as f:
+            f.write(str(e))
