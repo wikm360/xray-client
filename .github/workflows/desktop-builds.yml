@@ -204,8 +204,6 @@ jobs:
         run: |
           pyinstaller --clean --windowed \
             --icon=./GUI-ver/icon.ico \
-            --add-data "./GUI-ver/subs:subs" \
-            --add-data "./GUI-ver/core:core" \
             --collect-all flet \
             --name XC \
             ./GUI-ver/GUI.py
