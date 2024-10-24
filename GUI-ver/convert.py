@@ -71,7 +71,8 @@ def decode_vmess(link):
     elif config['net'] == "splithttp":
         stream_settings["splithttpSettings"] = {
             "host": config.get('host', ""),
-            "path": config.get('path', "/")
+            "path": config.get('path', "/"),
+            "xmux" :{"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
         }
 
     if config.get('tls') == "tls":
@@ -197,6 +198,13 @@ def decode_vless(link):
                     }
                 }
             }
+        }
+
+    elif stream_settings['network'] == "splithttp":
+        stream_settings["splithttpSettings"] = {
+            "host": query_params.get('host', [""])[0],
+            "path": query_params.get('path', ["/"])[0],
+            "xmux" :{"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
         }
 
     elif stream_settings["network"] == "ws":
