@@ -12,6 +12,7 @@ import re
 import sys
 import ctypes
 import threading
+import winreg
 from const import *
 
 class XrayBackend:
@@ -273,6 +274,8 @@ class XrayBackend:
                 return "Unsupported OS for TUN mode"
         else:
             self.run_xray(config_path)
+            if OS_SYS == "win" :
+                self.set_system_proxy(PROXY_IP , PROXY_PORT)
 
         return "Xray started successfully"
                 
@@ -328,6 +331,8 @@ class XrayBackend:
                 self.log(f"{name} Error: {line.strip()}")
 
     def stop_xray(self):
+        if OS_SYS == "win" :
+            self.disable_system_proxy()
         if self.xray_process:
             self.xray_process.terminate()
             self.xray_process = None
@@ -337,6 +342,32 @@ class XrayBackend:
             self.singbox_process = None
             self.log("Sing-box has been stopped.")
         return "Xray and Sing-box are not running."
+
+    def set_system_proxy(self , proxy_ip, proxy_port):
+        try:
+            reg_path = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.SetValueEx(key, "ProxyEnable", 0, winreg.REG_DWORD, 1)
+
+                proxy_value = f"{proxy_ip}:{proxy_port}"
+                winreg.SetValueEx(key, "ProxyServer", 0, winreg.REG_SZ, proxy_value)
+
+            self.log(f"Proxy set to {proxy_value} successfully.")
+        except Exception as e:
+            self.log(f"Error setting proxy: {e}")
+
+    def disable_system_proxy(self):
+        try:
+            reg_path = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path, 0, winreg.KEY_SET_VALUE) as key:
+                winreg.SetValueEx(key, "ProxyEnable", 0, winreg.REG_DWORD, 0)
+
+            self.log("Proxy disabled successfully")
+        except Exception as e:
+            self.log(f"Error disabling proxy: {e}")
+
 
     def log(self, message):
         if self.log_callback:
