@@ -61,29 +61,45 @@ class XrayBackend:
         return configs
 
     def import_subscription(self, name, url):
-        headers = {"user-agent": "XC(Xray-Client)"}
-        r = requests.get(url=url, headers=headers)
-        text = r.text
-        decoded_bytes = base64.b64decode(text)
-        decoded_str = decoded_bytes.decode('utf-8')
-        list_configs = decoded_str.split("\n")
+        if "https" in url :
+            headers = {"user-agent": "XC(Xray-Client)"}
+            r = requests.get(url=url, headers=headers)
+            text = r.text
+            decoded_bytes = base64.b64decode(text)
+            decoded_str = decoded_bytes.decode('utf-8')
+            list_configs = decoded_str.split("\n")
 
-        directory_path = f"./subs/{name}"
-        Path(directory_path).mkdir(parents=True, exist_ok=True)
+            directory_path = f"./subs/{name}"
+            Path(directory_path).mkdir(parents=True, exist_ok=True)
 
-        dict_name = {}
-        for count, config in enumerate(list_configs):
+            dict_name = {}
+            for count, config in enumerate(list_configs):
+                if config.strip():
+                    config_json, config_name = convert.convert(config)
+                    if config_name != "False":
+                        with open(f"./subs/{name}/{count}.json", "w") as f:
+                            f.write(config_json)
+                        dict_name[count] = config_name
+
+            with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                json.dump(dict_name, f, ensure_ascii=False, indent=4)
+            with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                f.write(url)
+        else  :
+            config  = url
+            directory_path = f"./subs/{name}"
+            Path(directory_path).mkdir(parents=True, exist_ok=True)
+
             if config.strip():
                 config_json, config_name = convert.convert(config)
                 if config_name != "False":
-                    with open(f"./subs/{name}/{count}.json", "w") as f:
+                    with open(f"./subs/{name}/0.json", "w") as f:
                         f.write(config_json)
-                    dict_name[count] = config_name
+            with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
+            with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                f.write(url)
 
-        with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-            json.dump(dict_name, f, ensure_ascii=False, indent=4)
-        with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-            f.write(url)
 
     def update_subscription(self, profile):
         path = f"./subs/{profile}/url.txt"
@@ -275,6 +291,8 @@ class XrayBackend:
             self.run_xray(config_path)
             if OS_SYS == "win" :
                 self.set_system_proxy(PROXY_IP , PROXY_PORT)
+            if OS_SYS == "linux" :
+                self.set_gnome_proxy(PROXY_IP , PROXY_PORT)
 
         return "Xray started successfully"
                 
@@ -332,6 +350,8 @@ class XrayBackend:
     def stop_xray(self):
         if OS_SYS == "win" :
             self.disable_system_proxy()
+        if OS_SYS == "linux":
+            self.disable_gnome_proxy()
         if self.xray_process:
             self.xray_process.terminate()
             self.xray_process = None
@@ -369,6 +389,42 @@ class XrayBackend:
         except Exception as e:
             self.log(f"Error disabling proxy: {e}")
 
+
+    def set_gnome_proxy(self , proxy_ip, proxy_port):
+        try:
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy", "mode", "'manual'"
+            ], check=True)
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy.http", "host", f"'{proxy_ip}'"
+            ], check=True)
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy.http", "port", str(proxy_port)
+            ], check=True)
+
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy.https", "host", f"'{proxy_ip}'"
+            ], check=True)
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy.https", "port", str(proxy_port)
+            ], check=True)
+
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy", "ignore-hosts", "['']"
+            ], check=True)
+
+            print(f"Proxy set to {proxy_ip}:{proxy_port} successfully.")
+        except Exception as e:
+            print(f"Error setting proxy: {e}")
+
+    def disable_gnome_proxy(self):
+        try:
+            subprocess.run([
+                "gsettings", "set", "org.gnome.system.proxy", "mode", "'none'"
+            ], check=True)
+            print("Proxy disabled successfully.")
+        except Exception as e:
+            print(f"Error disabling proxy: {e}")
 
     def log(self, message):
         if self.log_callback:
