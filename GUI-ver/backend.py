@@ -12,7 +12,6 @@ import re
 import sys
 import ctypes
 import threading
-import winreg
 from const import *
 
 class XrayBackend:
@@ -344,6 +343,7 @@ class XrayBackend:
         return "Xray and Sing-box are not running."
 
     def set_system_proxy(self , proxy_ip, proxy_port):
+        import winreg
         try:
             reg_path = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
@@ -358,6 +358,7 @@ class XrayBackend:
             self.log(f"Error setting proxy: {e}")
 
     def disable_system_proxy(self):
+        import winreg
         try:
             reg_path = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
