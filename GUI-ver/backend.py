@@ -413,18 +413,18 @@ class XrayBackend:
                 "gsettings", "set", "org.gnome.system.proxy", "ignore-hosts", "['']"
             ], check=True)
 
-            print(f"Proxy set to {proxy_ip}:{proxy_port} successfully.")
+            self.log(f"Proxy set to {proxy_ip}:{proxy_port} successfully.")
         except Exception as e:
-            print(f"Error setting proxy: {e}")
+            self.log(f"Error setting proxy: {e}")
 
     def disable_gnome_proxy(self):
         try:
             subprocess.run([
                 "gsettings", "set", "org.gnome.system.proxy", "mode", "'none'"
             ], check=True)
-            print("Proxy disabled successfully.")
+            self.log("Proxy disabled successfully")
         except Exception as e:
-            print(f"Error disabling proxy: {e}")
+            self.log(f"Error disabling proxy: {e}")
 
     def log(self, message):
         if self.log_callback:

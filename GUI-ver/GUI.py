@@ -16,21 +16,21 @@ class XrayClientUI:
         self.page.theme_mode = self.read_settinng("theme")
         self.debug_mod = self.read_settinng("debug")
         self.backend.log_callback = self.log
-        self.page.padding = 20
+        self.page.padding = 30  # افزایش پدینگ کلی صفحه
         self.selected_config = None
         self.real_delay_stat = None
         self.ping_all_button = None
         self.close_event = self.backend.close_event
         self.cancel_real_delay_stat = "0"
         self.ping_type = self.read_settinng("ping")
-        self.run_mode = "proxy"  # Default mode
+        self.run_mode = "proxy"
         self.tabs = ft.Tabs(
             selected_index=0,
             animation_duration=300,
             tabs=[ft.Tab(text="Home")],
             expand=1,
         )
-        self.log_buffer = deque(maxlen=1000)  # Limit log entries
+        self.log_buffer = deque(maxlen=100)
         self.last_logged_message = None
         self.create_ui()
     
@@ -114,27 +114,36 @@ class XrayClientUI:
             checkver.main(self.page)
         threading.Thread(target=run_update_check, daemon=True).start()
 
+
     def create_ui(self):
         threading.Thread(target=self.check_for_close_signal, daemon=True).start()
 
         system_info = self.backend.get_system_info()
 
-        settings_icon_value = ft.icons.SETTINGS if self.page.theme_mode == ft.ThemeMode.DARK else ft.icons.SETTINGS_OUTLINED
+        # بهبود دکمه تنظیمات
         settings_icon = ft.IconButton(
-            icon=settings_icon_value,
-            icon_size=24,
+            icon=ft.icons.SETTINGS,
+            icon_size=28,
             on_click=self.show_settings_dialog,
             style=ft.ButtonStyle(
                 color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK,
                 bgcolor=ft.colors.TRANSPARENT,
             ),
-            tooltip="Settings"
+            tooltip="Settings",
         )
 
+        # بهبود دکمه Import
         import_button = ft.ElevatedButton(
-            "Import Subscription",
-            on_click=self.show_import_dialog,
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.CLOUD_DOWNLOAD, size=20),
+                    ft.Text("Import Subscription", size=16),
+                ],
+                spacing=8,
+            ),
             style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
                 color={
                     ft.ControlState.DEFAULT: ft.colors.WHITE,
                     ft.ControlState.HOVERED: ft.colors.WHITE,
@@ -143,32 +152,52 @@ class XrayClientUI:
                     ft.ControlState.DEFAULT: ft.colors.BLUE,
                     ft.ControlState.HOVERED: ft.colors.BLUE_700,
                 },
-            )
+            ),
+            on_click=self.show_import_dialog,
         )
 
         header = ft.Row(
-            controls=[import_button, ft.Container(expand=1), settings_icon],  # container with expand fill the space bitween buttons
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,  # set two button in two side
+            controls=[import_button, ft.Container(expand=1), settings_icon],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
 
+        # بهبود کارت اطلاعات
         info_card = ft.Card(
             content=ft.Container(
                 content=ft.Column([
-                    ft.Text(f"XC (Xray-Client)", size=24, weight=ft.FontWeight.BOLD),
-                    ft.Text(f"XC Version: {self.backend.version}", size=16),
-                    ft.Text(f"Xray Version: {self.backend.xray_version}", size=16),
-                    ft.Divider(),
-                    *[ft.Text(f"{key}: {value}", size=14) for key, value in system_info.items()],
-                ]),
-                padding=20,
+                    ft.Row([
+                        ft.Icon(ft.icons.BOLT, size=30, color=ft.colors.BLUE),
+                        ft.Text("XC (Xray-Client)", size=28, weight=ft.FontWeight.BOLD),
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Container(height=10),
+                    ft.Row([
+                        ft.Text(f"XC Version: {self.backend.version}", size=16),
+                        ft.Container(width=20),
+                        ft.Text(f"Xray Version: {self.backend.xray_version}", size=16),
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Divider(height=30, thickness=2),
+                    *[ft.Text(f"{key}: {value}", size=14, weight=ft.FontWeight.W_500) 
+                      for key, value in system_info.items()],
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                padding=30,
+                border_radius=10,
             ),
-            elevation=5,
+            elevation=8,
         )
 
+        # بهبود دکمه Start/Stop
         self.xray_button = ft.ElevatedButton(
-            "Start",
-            on_click=self.toggle_xray,
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            ),
             style=ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                shape=ft.RoundedRectangleBorder(radius=10),
                 color={
                     ft.ControlState.DEFAULT: ft.colors.WHITE,
                     ft.ControlState.HOVERED: ft.colors.WHITE,
@@ -177,44 +206,52 @@ class XrayClientUI:
                     ft.ControlState.DEFAULT: ft.colors.GREEN,
                     ft.ControlState.HOVERED: ft.colors.GREEN_700,
                 },
-            )
+            ),
+            on_click=self.toggle_xray,
         )
 
+        # بهبود Switch حالت
         self.mode_switch = ft.Switch(
-            label="Proxy",
+            label="Proxy Mode",
             value=True,
-            active_color=ft.colors.TRANSPARENT,
-            #inactive_color=ft.colors.GREY,
-            on_change=self.toggle_mode
+            active_color=ft.colors.BLUE,
+            inactive_thumb_color=ft.colors.GREY_400,
+            on_change=self.toggle_mode,
         )
 
+        # بهبود نمایش لاگ‌ها
         self.log_view = ft.TextField(
             multiline=True,
             read_only=True,
             expand=True,
-            min_lines=10,
+            min_lines=12,
             max_lines=20,
             border_color=ft.colors.BLUE_200,
+            border_radius=8,
+            text_size=14,
         )
 
         home_content = ft.Column([
             info_card,
-            ft.Container(height=20),
+            ft.Container(height=30),
             ft.Row([
                 self.xray_button,
+                ft.Container(width=20),
                 self.mode_switch
             ], alignment=ft.MainAxisAlignment.CENTER),
-            ft.Container(height=20),
-            ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
+            ft.Container(height=30),
+            ft.Row([
+                ft.Icon(ft.icons.TERMINAL, color=ft.colors.BLUE),
+                ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
+            ], alignment=ft.MainAxisAlignment.CENTER),
             self.log_view
-        ], expand=True, spacing=10)
+        ], expand=True, spacing=15)
 
         self.tabs.tabs[0].content = home_content
 
         for profile in self.backend.get_profiles():
             self.add_profile_tab(profile)
 
-        # add header and tabs to page
         self.page.add(header, self.tabs)
         self.log("XC - Created By wikm , 3ircle with ❤️")
         self.check_for_updates()
@@ -358,23 +395,34 @@ class XrayClientUI:
 
     def create_config_tile_with_ping(self, config, profile):
         is_selected = config == self.selected_config
-        config_name = ft.Text(config, size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
-        ping_text = ft.Text("Ping: -", size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
-
+        
         return ft.ListTile(
+            leading=ft.Icon(
+                ft.icons.CLOUD,
+                color=ft.colors.BLUE if is_selected else ft.colors.GREY,
+                size=24,
+            ),
             title=ft.Container(
-                content=ft.Text(config, size=16),
-                bgcolor=ft.colors.LIGHT_BLUE if is_selected else ft.colors.TRANSPARENT,
-                padding=ft.padding.all(10),
+                content=ft.Text(
+                    config,
+                    size=16,
+                    weight=ft.FontWeight.W_500 if is_selected else ft.FontWeight.NORMAL
+                ),
+                bgcolor=ft.colors.BLUE_100 if is_selected else ft.colors.TRANSPARENT,
+                padding=ft.padding.all(12),
                 animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
-                border_radius=10
+                border_radius=8,
             ),
             trailing=ft.Container(
-                content=ping_text,
-                padding=ft.padding.all(10)
+                content=ft.Text(
+                    "Ping: -",
+                    size=16,
+                    color=ft.colors.GREY_700,
+                ),
+                padding=ft.padding.all(8),
             ),
             selected=is_selected,
-            on_click=lambda _, c=config, p=profile: self.select_config(c, p)
+            on_click=lambda _, c=config, p=profile: self.select_config(c, p),
         )
 
 
@@ -495,6 +543,20 @@ class XrayClientUI:
             message = self.backend.run(selected_config, "tun", sudo_password=password)
             self.log(message)
             if "Successfully" in message:
+                self.xray_button.content = ft.Row(
+                    [
+                        ft.Icon(ft.icons.STOP),
+                        ft.Text("Stop", size=16, weight=ft.FontWeight.W_500),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=8,
+                )
+                self.xray_button.style = ft.ButtonStyle(
+                    bgcolor={
+                        ft.ControlState.DEFAULT: ft.colors.RED,
+                        ft.ControlState.HOVERED: ft.colors.RED_700,
+                    }
+                )
                 self.xray_button.text = "Stop"
                 self.xray_button.style.bgcolor = {
                     ft.ControlState.DEFAULT: ft.colors.RED,
@@ -546,6 +608,20 @@ class XrayClientUI:
     def handle_xray_start(self, message):
         self.log(message)
         if "Successfully" in message or "Xray started successfully" in message:
+            self.xray_button.content = ft.Row(
+                [
+                    ft.Icon(ft.icons.STOP),
+                    ft.Text("Stop", size=16, weight=ft.FontWeight.W_500),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            )
+            self.xray_button.style = ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.RED,
+                    ft.ControlState.HOVERED: ft.colors.RED_700,
+                }
+            )
             self.xray_button.text = "Stop"
             self.xray_button.style.bgcolor = {
                 ft.ControlState.DEFAULT: ft.colors.RED,
