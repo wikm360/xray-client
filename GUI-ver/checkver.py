@@ -6,7 +6,6 @@ import flet as ft
 import threading
 from requests.exceptions import RequestException
 from const import *
-import subprocess
 import json
 
 class UpdateChecker:

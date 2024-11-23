@@ -16,21 +16,22 @@ class XrayClientUI:
         self.page.theme_mode = self.read_settinng("theme")
         self.debug_mod = self.read_settinng("debug")
         self.backend.log_callback = self.log
-        self.page.padding = 20
+        self.page.padding = 20 # padding of all page
         self.selected_config = None
         self.real_delay_stat = None
         self.ping_all_button = None
         self.close_event = self.backend.close_event
         self.cancel_real_delay_stat = "0"
         self.ping_type = self.read_settinng("ping")
-        self.run_mode = "proxy"  # Default mode
+        self.run_mode = "proxy"
         self.tabs = ft.Tabs(
             selected_index=0,
             animation_duration=300,
             tabs=[ft.Tab(text="Home")],
             expand=1,
         )
-        self.log_buffer = deque(maxlen=1000)  # Limit log entries
+        self.log_buffer = deque(maxlen=100)
+        self.last_logged_message = None
         self.create_ui()
     
     @staticmethod
@@ -113,27 +114,34 @@ class XrayClientUI:
             checkver.main(self.page)
         threading.Thread(target=run_update_check, daemon=True).start()
 
+
     def create_ui(self):
         threading.Thread(target=self.check_for_close_signal, daemon=True).start()
 
         system_info = self.backend.get_system_info()
 
-        settings_icon_value = ft.icons.SETTINGS if self.page.theme_mode == ft.ThemeMode.DARK else ft.icons.SETTINGS_OUTLINED
         settings_icon = ft.IconButton(
-            icon=settings_icon_value,
-            icon_size=24,
+            icon=ft.icons.SETTINGS,
+            icon_size=28,
             on_click=self.show_settings_dialog,
             style=ft.ButtonStyle(
                 color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK,
                 bgcolor=ft.colors.TRANSPARENT,
             ),
-            tooltip="Settings"
+            tooltip="Settings",
         )
 
         import_button = ft.ElevatedButton(
-            "Import Subscription",
-            on_click=self.show_import_dialog,
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.CLOUD_DOWNLOAD, size=20),
+                    ft.Text("Import Subscription", size=16),
+                ],
+                spacing=8,
+            ),
             style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
                 color={
                     ft.ControlState.DEFAULT: ft.colors.WHITE,
                     ft.ControlState.HOVERED: ft.colors.WHITE,
@@ -142,32 +150,50 @@ class XrayClientUI:
                     ft.ControlState.DEFAULT: ft.colors.BLUE,
                     ft.ControlState.HOVERED: ft.colors.BLUE_700,
                 },
-            )
+            ),
+            on_click=self.show_import_dialog,
         )
 
         header = ft.Row(
-            controls=[import_button, ft.Container(expand=1), settings_icon],  # container with expand fill the space bitween buttons
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,  # set two button in two side
+            controls=[import_button, ft.Container(expand=1), settings_icon],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
 
         info_card = ft.Card(
             content=ft.Container(
                 content=ft.Column([
-                    ft.Text(f"XC (Xray-Client)", size=24, weight=ft.FontWeight.BOLD),
-                    ft.Text(f"XC Version: {self.backend.version}", size=16),
-                    ft.Text(f"Xray Version: {self.backend.xray_version}", size=16),
-                    ft.Divider(),
-                    *[ft.Text(f"{key}: {value}", size=14) for key, value in system_info.items()],
-                ]),
-                padding=20,
+                    ft.Row([
+                        ft.Icon(ft.icons.BOLT, size=30, color=ft.colors.BLUE),
+                        ft.Text("XC (Xray-Client)", size=28, weight=ft.FontWeight.BOLD),
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Container(height=10),
+                    ft.Row([
+                        ft.Text(f"XC Version: {self.backend.version}", size=16),
+                        ft.Container(width=20),
+                        ft.Text(f"Xray Version: {self.backend.xray_version}", size=16),
+                    ], alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Divider(height=30, thickness=2),
+                    *[ft.Text(f"{key}: {value}", size=14, weight=ft.FontWeight.W_500) 
+                      for key, value in system_info.items()],
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                padding=30,
+                border_radius=10,
             ),
-            elevation=5,
+            elevation=8,
         )
 
         self.xray_button = ft.ElevatedButton(
-            "Start Xray",
-            on_click=self.toggle_xray,
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            ),
             style=ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                shape=ft.RoundedRectangleBorder(radius=10),
                 color={
                     ft.ControlState.DEFAULT: ft.colors.WHITE,
                     ft.ControlState.HOVERED: ft.colors.WHITE,
@@ -176,44 +202,50 @@ class XrayClientUI:
                     ft.ControlState.DEFAULT: ft.colors.GREEN,
                     ft.ControlState.HOVERED: ft.colors.GREEN_700,
                 },
-            )
+            ),
+            on_click=self.toggle_xray,
         )
 
         self.mode_switch = ft.Switch(
             label="Proxy",
             value=True,
-            active_color=ft.colors.TRANSPARENT,
-            #inactive_color=ft.colors.GREY,
-            on_change=self.toggle_mode
+            active_color=ft.colors.GREY_400,
+            inactive_thumb_color=ft.colors.BLUE,
+            on_change=self.toggle_mode,
         )
 
         self.log_view = ft.TextField(
             multiline=True,
             read_only=True,
             expand=True,
-            min_lines=10,
+            min_lines=12,
             max_lines=20,
             border_color=ft.colors.BLUE_200,
+            border_radius=8,
+            text_size=14,
         )
-
+        
         home_content = ft.Column([
             info_card,
             ft.Container(height=20),
             ft.Row([
                 self.xray_button,
+                ft.Container(width=20),
                 self.mode_switch
             ], alignment=ft.MainAxisAlignment.CENTER),
-            ft.Container(height=20),
-            ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
+            ft.Container(height=5),
+            ft.Row([
+                ft.Icon(ft.icons.TERMINAL, color=ft.colors.BLUE),
+                ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
+            ], alignment=ft.MainAxisAlignment.CENTER),
             self.log_view
-        ], expand=True, spacing=10)
+        ], expand=True, spacing=15)
 
         self.tabs.tabs[0].content = home_content
 
         for profile in self.backend.get_profiles():
             self.add_profile_tab(profile)
 
-        # add header and tabs to page
         self.page.add(header, self.tabs)
         self.log("XC - Created By wikm , 3ircle with ❤️")
         self.check_for_updates()
@@ -226,20 +258,134 @@ class XrayClientUI:
         for config in configs:
             config_list.controls.append(self.create_config_tile_with_ping(config, profile))
 
-        update_button = ft.ElevatedButton("Update", on_click=lambda _: self.update_subscription(profile))
-        delete_button = ft.ElevatedButton("Delete", on_click=lambda _: self.delete_subscription(profile))
-        self.ping_all_button = ft.ElevatedButton(
-            "Ping All", 
-            on_click=lambda _: self.ping_button(profile, config_list)
+        update_button = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.REFRESH, size=20),
+                    ft.Text("Update", size=16),
+                ],
+                spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            ),
+            on_click=lambda _: self.update_subscription(profile)
+        )
+
+        delete_button = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.DELETE, size=20),
+                    ft.Text("Delete", size=16),
+                ],
+                spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            ),
+            on_click=lambda _: self.delete_subscription(profile)
+        )
+
+        edit_button = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.EDIT, size=20),
+                    ft.Text("Edit", size=16),
+                ],
+                spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            ),
+            on_click=lambda _: self.show_edit_dialog(profile)
+        )
+
+        # create profile specific
+        ping_button = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.NETWORK_CHECK, size=20),
+                    ft.Text("Ping All", size=16),
+                ],
+                spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            ),
+            data={"profile": profile, "status": "0"},  # save status of button
+            on_click=lambda e: self.ping_button(e.control, config_list)
         )
 
         tab_content = ft.Column([
-            ft.Row([update_button, delete_button, self.ping_all_button]), #ft.Row([update_button, delete_button, ping_all_button], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+            ft.Row([update_button, delete_button, edit_button, ping_button],
+                alignment=ft.MainAxisAlignment.START,
+                spacing=10), 
             config_list
         ], expand=True)
 
         self.tabs.tabs.append(ft.Tab(text=profile, content=tab_content))
         self.page.update()
+
+
+    def show_edit_dialog(self, profile):
+        profile_path = f"./subs/{profile}"
+        link_file_path = f"{profile_path}/url.txt"
+
+        try:
+            with open(link_file_path, "r") as f:
+                current_link = f.read().strip()
+        except FileNotFoundError:
+            current_link = ""
+
+        name_field = ft.TextField(value=profile, label="Profile Name", expand=True)
+        link_field = ft.TextField(value=current_link, label="Subscription Link", expand=True)
+
+        def save_changes(e):
+            new_name = name_field.value.strip()
+            new_link = link_field.value.strip()
+
+            if new_name and new_link:
+                if new_name != profile:
+                    os.rename(profile_path, f"./subs/{new_name}")
+
+                with open(f"./subs/{new_name}/url.txt", "w") as f:
+                    f.write(new_link)
+
+                for tab in self.tabs.tabs:
+                    if tab.text == profile:
+                        tab.text = new_name
+                        break
+
+                self.update_subscription(new_name)
+                self.page.update()
+                self.close_dialog(edit_dialog)
+
+        edit_dialog = ft.AlertDialog(
+            title=ft.Text("Edit Profile"),
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        name_field,
+                        link_field,
+                    ],
+                    spacing=20,
+                ),
+                padding=20,
+                width=400,
+            ),
+            actions=[
+                ft.TextButton("Save", on_click=save_changes),
+                ft.TextButton("Cancel", on_click=lambda _: self.close_dialog(edit_dialog)),
+            ],
+        )
+        self.page.overlay.append(edit_dialog)
+        edit_dialog.open = True
+        self.page.update()
+
 
     def show_settings_dialog(self, e):
         ping_type_dropdown = ft.Dropdown(
@@ -260,7 +406,6 @@ class XrayClientUI:
             on_change=self.change_theme,
             expand=True,
         )
-
         debug_dropdown = ft.Dropdown(
             options=[
                 ft.dropdown.Option("on"),
@@ -271,93 +416,160 @@ class XrayClientUI:
             expand=True,
         )
 
+        github_button = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.PUBLIC, size=20),
+                    ft.Text("GitHub", size=16),
+                ],
+                spacing=8,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=20, vertical=10),
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color=ft.colors.WHITE,
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.BLUE,
+                    ft.ControlState.HOVERED: ft.colors.BLUE_700,
+                },
+            ),
+            tooltip="Visit GitHub Repository",
+            on_click=lambda _: self.open_github(),
+        )
+
+
         settings_dialog = ft.AlertDialog(
             title=ft.Text("Settings"),
             content=ft.Container(
                 content=ft.Column(
                     [
-                        ft.Row([ft.Text("Ping Type : "), ping_type_dropdown], 
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        ft.Row([ft.Text("Theme : "), theme_dropdown], 
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        ft.Row([ft.Text("debug : "), debug_dropdown], 
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row(
+                            [ft.Text("Ping Type : "), ping_type_dropdown],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Row(
+                            [ft.Text("Theme : "), theme_dropdown],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Row(
+                            [ft.Text("Debug : "), debug_dropdown],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Divider(height=20, thickness=1),
+                        ft.Row(
+                            [github_button],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
                     ],
                     spacing=20,
                 ),
                 padding=20,
                 width=400,
             ),
-            actions=[ft.TextButton("Close", on_click=lambda _: self.close_dialog(settings_dialog))],
+            actions=[
+                ft.TextButton("Close", on_click=lambda _: self.close_dialog(settings_dialog))
+            ],
         )
 
-        # open setting page
         self.page.overlay.append(settings_dialog)
         settings_dialog.open = True
         self.page.update()
 
 
+    def open_github(self):
+        import webbrowser
+        webbrowser.open("https://github.com/wikm360/xray-client")
+
+
+
     def create_config_tile_with_ping(self, config, profile):
         is_selected = config == self.selected_config
-        config_name = ft.Text(config, size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
-        ping_text = ft.Text("Ping: -", size=16, color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK)
-
+        
         return ft.ListTile(
+            leading=ft.Icon(
+                ft.icons.CLOUD,
+                color=ft.colors.BLUE if is_selected else ft.colors.GREY,
+                size=24,
+            ),
             title=ft.Container(
-                content=ft.Text(config, size=16),
-                bgcolor=ft.colors.LIGHT_BLUE if is_selected else ft.colors.TRANSPARENT,
-                padding=ft.padding.all(10),
+                content=ft.Text(
+                    config,
+                    size=16,
+                    weight=ft.FontWeight.W_500 if is_selected else ft.FontWeight.NORMAL
+                ),
+                bgcolor=ft.colors.BLUE_100 if is_selected else ft.colors.TRANSPARENT,
+                padding=ft.padding.all(12),
                 animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
-                border_radius=10
+                border_radius=8,
             ),
             trailing=ft.Container(
-                content=ping_text,
-                padding=ft.padding.all(10)
+                content=ft.Text(
+                    "Ping: -",
+                    size=16,
+                    color=ft.colors.GREY_700,
+                ),
+                padding=ft.padding.all(8),
             ),
             selected=is_selected,
-            on_click=lambda _, c=config, p=profile: self.select_config(c, p)
+            on_click=lambda _, c=config, p=profile: self.select_config(c, p),
         )
 
 
     # "0"  = cancel does not exist
     #  "1" = cancel showed
     #  "2" = camcel clicked   
-    def ping_button(self, profile, config_list):
-        if self.cancel_real_delay_stat == "0":
-            self.ping_all_button.text = "Cancel"
-            self.cancel_real_delay_stat = "1"
-            self.ping_all_configs(profile, config_list)
-        elif self.cancel_real_delay_stat == "1": 
-            self.ping_all_button.text = "Ping All"
-            self.cancel_real_delay_stat = "2"
+    def ping_button(self, button, config_list):
+        if button.data["status"] == "0":
+            button.content.controls[1].value = "Cancel"
+            button.data["status"] = "1"
+            self.ping_all_configs(button.data["profile"], config_list, button)
+        elif button.data["status"] == "1": 
+            button.content.controls[1].value = "Ping All"
+            button.data["status"] = "2"
+        self.page.update()
 
-    def ping_all_configs(self, profile, config_list):
-        if self.ping_type == "Real-delay" :
+    def ping_all_configs(self, profile, config_list, ping_button):
+        if self.ping_type == "Real-delay":
             self.xray_button.disabled = True
-            self.xray_button.text = "Start Xray"
-            self.xray_button.style.bgcolor = {
-                ft.ControlState.DEFAULT: ft.colors.GREEN,
-                ft.ControlState.HOVERED: ft.colors.GREEN_700,
-            }
+            self.xray_button.content = ft.Row (
+                            [
+                                ft.Icon(ft.icons.PLAY_ARROW),
+                                ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=8,
+                        )
+            self.xray_button.style = ft.ButtonStyle(
+                            padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                            shape=ft.RoundedRectangleBorder(radius=10),
+                            color={
+                                ft.ControlState.DEFAULT: ft.colors.WHITE,
+                                ft.ControlState.HOVERED: ft.colors.WHITE,
+                            },
+                            bgcolor={
+                                ft.ControlState.DEFAULT: ft.colors.GREEN,
+                                ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                            },
+                        )
+
         def ping_worker():
-            self.cancel_real_delay_stat = "1" 
             for control in config_list.controls:
                 if isinstance(control, ft.ListTile):
                     config_name = control.title.content.value
                     ping_text = control.trailing.content
                     config_num = config_name.split("-")[0].strip()
-                    result = self.backend.ping_config(profile, config_num , self.ping_type)
+                    result = self.backend.ping_config(profile, config_num, self.ping_type)
 
-                    if self.cancel_real_delay_stat == "2":
+                    if ping_button.data["status"] == "2":
                         self.xray_button.disabled = False
                         break
 
                     ping_text.value = f"Ping: {result}"
                     self.page.update()
 
-            # reset button txt
-            self.ping_all_button.text = "Ping All"
-            self.cancel_real_delay_stat = "0"
+            ping_button.content.controls[1].value = "Ping All"
+            ping_button.data["status"] = "0"
             self.page.update()
 
         threading.Thread(target=ping_worker, daemon=True).start()
@@ -373,34 +585,32 @@ class XrayClientUI:
             self.log(f"Error selecting config: {str(e)}")
         self.refresh_profile_tab(profile)
 
-    def refresh_profile_tab(self, profile):
-        if profile == "all":
-            profiles = self.backend.get_profiles()
-            for profile in profiles:
-                for tab in self.tabs.tabs:
-                    if tab.text == profile:
-                        configs = self.backend.get_configs(profile)
-                        config_list = tab.content.controls[1]
-                        config_list.controls = [self.create_config_tile_with_ping(config, profile) for config in configs]
-        
-        for tab in self.tabs.tabs:
-            if tab.text == profile:
-                configs = self.backend.get_configs(profile)
-                config_list = tab.content.controls[1]
-                for control in config_list.controls:
-                    config_name = control.title.content.value
-                    # change color to selcted
-                    if config_name == self.selected_config:
-                        control.title.content.bgcolor = ft.colors.LIGHT_BLUE
-                    else:
-                        control.title.content.bgcolor = ft.colors.TRANSPARENT
-                # just add new config
-                for config in configs:
-                    if not any(control.title.content.value == config for control in config_list.controls):
-                        config_list.controls.append(self.create_config_tile_with_ping(config, profile))
-                        
-                break
+    def refresh_profile_tab(self , profile):
+        if profile == "all" :
+            self.selected_config = None
+            self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text == "Home"]
+
+            for profile in self.backend.get_profiles():
+                self.add_profile_tab(profile)
+    
+        else :
+            for tab in self.tabs.tabs:
+                if tab.text == profile:
+                    configs = self.backend.get_configs(profile)
+                    config_list = tab.content.controls[1]
+                    for control in config_list.controls:
+                        config_name = control.title.content.value
+                        if config_name == self.selected_config:
+                            control.title.content.bgcolor = ft.colors.LIGHT_BLUE
+                        else:
+                            control.title.content.bgcolor = ft.colors.TRANSPARENT
+                    for config in configs:
+                        if not any(control.title.content.value == config for control in config_list.controls):
+                            config_list.controls.append(self.create_config_tile_with_ping(config, profile))
+                            
+                    break
         self.page.update()
+
 
     def show_import_dialog(self, e):
         def import_sub(e):
@@ -438,11 +648,26 @@ class XrayClientUI:
             message = self.backend.run(selected_config, "tun", sudo_password=password)
             self.log(message)
             if "Successfully" in message:
-                self.xray_button.text = "Stop Xray"
-                self.xray_button.style.bgcolor = {
-                    ft.ControlState.DEFAULT: ft.colors.RED,
-                    ft.ControlState.HOVERED: ft.colors.RED_700,
-                }
+                self.xray_button.content = ft.Row(
+                    [
+                        ft.Icon(ft.icons.STOP),
+                        ft.Text("Stop", size=16, weight=ft.FontWeight.W_500),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=8,
+                )
+                self.xray_button.style = ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color={
+                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                },
+                    bgcolor={
+                        ft.ControlState.DEFAULT: ft.colors.RED,
+                        ft.ControlState.HOVERED: ft.colors.RED_700,
+                    }
+                )
             self.page.update()
         else:
             self.log("No config selected. Please select a config first.")
@@ -478,22 +703,52 @@ class XrayClientUI:
                 self.log("No config selected. Please select a config first.")
         else:
             message = self.backend.stop_xray()
-            self.xray_button.text = "Start Xray"
-            self.xray_button.style.bgcolor = {
-                ft.ControlState.DEFAULT: ft.colors.GREEN,
-                ft.ControlState.HOVERED: ft.colors.GREEN_700,
-            }
+            self.xray_button.content = ft.Row (
+                [
+                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            )
+            self.xray_button.style = ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color={
+                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                },
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.GREEN,
+                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                },
+            )
             self.log(message)
         self.page.update()
 
     def handle_xray_start(self, message):
         self.log(message)
         if "Successfully" in message or "Xray started successfully" in message:
-            self.xray_button.text = "Stop Xray"
-            self.xray_button.style.bgcolor = {
-                ft.ControlState.DEFAULT: ft.colors.RED,
-                ft.ControlState.HOVERED: ft.colors.RED_700,
-            }
+            self.xray_button.content = ft.Row(
+                [
+                    ft.Icon(ft.icons.STOP),
+                    ft.Text("Stop", size=16, weight=ft.FontWeight.W_500),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            )
+            self.xray_button.style = ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color={
+                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                },
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.RED,
+                    ft.ControlState.HOVERED: ft.colors.RED_700,
+                }
+            )
 
     def show_sudo_password_dialog(self , selected_config):
         def submit_password(e):
@@ -567,14 +822,38 @@ class XrayClientUI:
             self.log_buffer.append("None")
         self.log_view.value = "\n".join(filter(None, self.log_buffer))
         self.page.update()
+
+        if message != self.last_logged_message:
+            logging.debug(message)
+            self.last_logged_message = message
         
     def update_subscription(self , profile) :
         self.backend.update_subscription(profile)
-        self.refresh_profile_tab(profile)
-    def delete_subscription(self , profile) :
-        self.backend.delete_subscription(profile)
-        self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
-        self.refresh_profile_tab(profile)
+        self.refresh_profile_tab(profile="all")
+    def delete_subscription(self, profile):
+        def confirm_delete(e):
+            self.backend.delete_subscription(profile)
+            self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text != profile]
+            self.refresh_profile_tab(profile="all")
+            self.close_dialog(confirm_dialog)
+
+        def cancel_delete(e):
+            self.close_dialog(confirm_dialog)
+
+        confirm_dialog = ft.AlertDialog(
+            title=ft.Text("Delete Confirmation"),
+            content=ft.Text(f"Are you sure you want to delete the profile '{profile}'?"),
+            actions=[
+                ft.TextButton("Yes", on_click=confirm_delete),
+                ft.TextButton("No", on_click=cancel_delete),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        self.page.overlay.append(confirm_dialog)
+        confirm_dialog.open = True
+        self.page.update()
+
 
     def check_for_close_signal(self):
         while True:
