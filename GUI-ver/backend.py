@@ -154,11 +154,14 @@ class XrayBackend:
             if self.xray_process:
                 self.stop_xray()
 
-            self.run(config_path , "proxy")
-            time.sleep(2)
+            self.run(config_path , "ping")
+            time.sleep(1)
             try:
                 s_time = time.time()
-                response = requests.get('http://gstatic.com/generate_204', proxies={"http": "http://127.0.0.1:1080"})
+                try :
+                    response = requests.get('http://gstatic.com/generate_204', proxies={"http": "http://127.0.0.1:1080"} , timeout=2)
+                except requests.exceptions.Timeout:
+                    return "Timeout"
                 e_time = time.time()
                 if 200 <= response.status_code < 300:
                     delay_ms = (e_time - s_time) * 1000
@@ -289,10 +292,11 @@ class XrayBackend:
                 return "Unsupported OS for TUN mode"
         else:
             self.run_xray(config_path)
-            if OS_SYS == "win" :
-                self.set_system_proxy(PROXY_IP , PROXY_PORT)
-            if OS_SYS == "linux" :
-                self.set_gnome_proxy(PROXY_IP , PROXY_PORT)
+            if type == "proxy" :
+                if OS_SYS == "win" :
+                    self.set_system_proxy(PROXY_IP , PROXY_PORT)
+                if OS_SYS == "linux" :
+                    self.set_gnome_proxy(PROXY_IP , PROXY_PORT)
 
         return "Xray started successfully"
                 
