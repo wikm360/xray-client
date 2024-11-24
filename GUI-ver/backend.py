@@ -322,6 +322,36 @@ class XrayBackend:
             return f"Error starting Xray or Sing-box: {str(e)}"
 
     def run_tun(self , config_path) :
+        singbox_config_path = f'./core/{OS_SYS}/singbox-config.json'
+        try:
+            with open(singbox_config_path, "r") as file:
+                data = json.load(file)
+
+            interface_name = data["inbounds"][0]["interface_name"]
+
+            match = re.match(r"tun(\d+)", interface_name)
+            if match:
+                current_number = int(match.group(1))
+                new_number = current_number + 1
+                new_interface_name = f"tun{new_number}"
+            else:
+                new_interface_name = "tun0"
+
+            data["inbounds"][0]["interface_name"] = new_interface_name
+
+            with open(singbox_config_path, "w") as file:
+                json.dump(data, file, indent=4)
+
+            self.log(f"TUN interface changed: {new_interface_name}")
+
+        except FileNotFoundError:
+            self.log(f"File Not Found : {singbox_config_path}")
+        except KeyError as e:
+            self.log(f"parametr not found : {e}")
+        except json.JSONDecodeError:
+            self.log("Error in Read JSON.")
+
+        
         with open(config_path, 'r') as file:
             data = json.load(file)
         dest = data['outbounds'][0]['settings']['vnext'][0]['address']
