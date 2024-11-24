@@ -5,7 +5,7 @@ A simple CLI / GUI Xray client for manage subscription and more based on python
 
 
 ## Features
-- Run with proxy and TUN
+- Run with system proxy and TUN
 - import subscriptions / import configs (Vmess,vless for now )
 - manage subscriptions (Delete , Update , Edit)
 - Tcping or Real-delay for all configs
@@ -20,9 +20,6 @@ A simple CLI / GUI Xray client for manage subscription and more based on python
 ![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/1.png?raw=true)
 ![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/2.png?raw=true)
 ![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/3.png?raw=true)
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/4.png?raw=true)
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/5.png?raw=true)
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/6.png?raw=true)
 
 
 ## Installation
