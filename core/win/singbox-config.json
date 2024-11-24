@@ -31,6 +31,12 @@
         ],
         "rules": [
             {
+                "server": "local_local",
+                "domain": [
+                    "e35f82f7-f4b9-44a7-v4-asiatech.wikmgg.ir"
+                ]
+            },
+            {
                 "server": "remote",
                 "clash_mode": "Global"
             },
@@ -45,7 +51,7 @@
         {
             "type": "tun",
             "tag": "tun-in",
-            "interface_name": "singbox_tun",
+            "interface_name": "tun2",
             "inet4_address": "172.19.0.1/30",
             "mtu": 9000,
             "auto_route": true,

@@ -45,7 +45,7 @@
         {
             "type": "tun",
             "tag": "tun-in",
-            "interface_name": "singbox_tun",
+            "interface_name": "tun0",
             "inet4_address": "172.19.0.1/30",
             "mtu": 9000,
             "auto_route": true,
