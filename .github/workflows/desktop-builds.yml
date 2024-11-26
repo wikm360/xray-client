@@ -119,7 +119,7 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
+            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm &&
             mkdir release &&
             cp -r ./dist/XC ./release/ &&
             cp -r ./GUI-ver/subs ./release/ &&
