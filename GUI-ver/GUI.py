@@ -17,6 +17,15 @@ class XrayClientUI:
         self.debug_mod = self.read_settinng("debug")
         self.backend.log_callback = self.log
         self.page.padding = 20 # padding of all page
+        self.page.window.min_width = 600
+        self.page.window.min_height =730
+
+        def handle_window_event(e):
+            if e.data == "close":
+                self.page.open(confirm_dialog)
+        self.page.window.prevent_close = True
+        self.page.window.on_event = handle_window_event
+
         self.selected_config = None
         self.real_delay_stat = None
         self.ping_all_button = None
@@ -32,6 +41,26 @@ class XrayClientUI:
         )
         self.log_buffer = deque(maxlen=100)
         self.last_logged_message = None
+
+        def yes_click(e):
+            if self.backend.xray_process is None:
+                self.page.window.destroy()
+                return
+            self.toggle_xray(e="1")
+            self.page.window.destroy()
+        def no_click(e):
+            self.page.close(confirm_dialog)
+        confirm_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Please confirm"),
+            content=ft.Text("Do you really want to exit XC ?"),
+            actions=[
+                ft.ElevatedButton("Yes", on_click=yes_click),
+                ft.OutlinedButton("No", on_click=no_click),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
         self.create_ui()
     
     @staticmethod
@@ -584,6 +613,11 @@ class XrayClientUI:
         except Exception as e:
             self.log(f"Error selecting config: {str(e)}")
         self.refresh_profile_tab(profile)
+        if self.backend.xray_process is None:
+            pass
+        else :
+            self.toggle_xray(e="default")
+            self.toggle_xray(e="default")
 
     def refresh_profile_tab(self , profile):
         if profile == "all" :
