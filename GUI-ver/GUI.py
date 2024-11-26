@@ -359,6 +359,18 @@ class XrayClientUI:
         self.tabs.tabs.append(ft.Tab(text=profile, content=tab_content))
         self.page.update()
 
+        # check previous selected config
+        with open (f"./core/{self.backend.os_sys}/select.txt", "r") as file :
+            data = file.readlines()
+            if data :
+                index = data[0].split("/")[3].split(".")[0]
+                p = data[0].split("/")[2]
+                print(index ,  p)
+        with open(f"./subs/{p}/list.json", "r", encoding="utf-8") as file:
+            data = json.load(file)
+            self.selected_config = str(index) + " " + "-" + " " + data[index]
+        self.refresh_profile_tab(p)
+
 
     def show_edit_dialog(self, profile):
         profile_path = f"./subs/{profile}"

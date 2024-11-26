@@ -30,13 +30,13 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
+      - name: Build executable with flet
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version "v4.1-${{ github.run_number }}" --file-version FILE_VERSION "v4.1-${{ github.run_number }}" --company-name wikm
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/GUI.exe ./release/
+          cp -r ./dist/XC.exe ./release/
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
@@ -63,13 +63,13 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
+      - name: Build executable with flet
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version "v4.1-${{ github.run_number }}" --file-version FILE_VERSION "v4.1-${{ github.run_number }}" --company-name wikm
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/GUI ./release/
+          cp -r ./dist/XC ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-ubuntu.zip ./release/
 
@@ -119,9 +119,9 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py &&
+            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version "v4.1-${{ github.run_number }}" --file-version FILE_VERSION "v4.1-${{ github.run_number }}" --company-name wikm &&
             mkdir release &&
-            cp -r ./dist/GUI ./release/ &&
+            cp -r ./dist/XC ./release/ &&
             cp -r ./GUI-ver/subs ./release/ &&
             zip -r ./release/XC-fedora.zip ./release/
           "
@@ -167,7 +167,6 @@ jobs:
               ]
           )
           
-          # Rest of your imports
           import flet as ft
           from backend import XrayBackend
           import threading
@@ -179,11 +178,9 @@ jobs:
           
           logging.debug("Starting imports completed")
           
-          # Your XrayClientUI class here
           class XrayClientUI:
               def __init__(self, page: ft.Page):
                   logging.debug("Initializing XrayClientUI")
-                  # Rest of your init code
           
           def main(page: ft.Page):
               try:
@@ -201,12 +198,7 @@ jobs:
           ' > ./GUI-ver/GUI.py
           
       - name: Build executable with PyInstaller
-        run: |
-          pyinstaller --clean --windowed \
-            --icon=./GUI-ver/icon.ico \
-            --collect-all flet \
-            --name XC \
-            ./GUI-ver/GUI.py
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version "v4.1-${{ github.run_number }}" --file-version FILE_VERSION "v4.1-${{ github.run_number }}" --company-name wikm
           
       - name: Set executable permissions
         run: |
@@ -214,9 +206,7 @@ jobs:
           
       - name: Test executable
         run: |
-          # Start the app in background
           ./dist/XC.app/Contents/MacOS/XC &
-          # Wait a bit for the app to start
           sleep 5
           # Check if process is running
           ps aux | grep XC
