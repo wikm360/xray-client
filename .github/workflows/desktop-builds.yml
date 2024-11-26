@@ -85,10 +85,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Uninstall conflicting containerd packages
-        run: sudo apt-get remove -y containerd containerd.io
+      - name: Check if Docker is Installed
+        run: docker --version || echo "Docker not found. Installing..."
 
-      - name: Install Docker dependencies
+      - name: Install Docker dependencies (if needed)
         run: |
           sudo apt-get update
           sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
@@ -99,9 +99,7 @@ jobs:
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
       - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-ce
+        run: sudo apt-get install -y docker-ce
 
       - name: Start Docker
         run: |
@@ -115,23 +113,26 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip binutils zip &&
+            dnf install -y python3 python3-pip binutils zip gcc libffi-devel &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm &&
-            mkdir release &&
-            cp -r ./dist/XC ./release/ &&
-            cp -r ./GUI-ver/subs ./release/ &&
-            zip -r ./release/XC-fedora.zip ./release/
+            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm &&
+            ls -lah ./dist/
           "
-          
+
+      - name: Preprocess Release Files
+        run: |
+          mkdir -p release
+          cp -r ./dist/XC ./release/
+          zip -r ./release/XC-fedora.zip ./release/
+
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
           name: fedora-release
           path: ./release/XC-fedora.zip
-
+        
   build-macos:
     runs-on: macos-latest
     steps:
