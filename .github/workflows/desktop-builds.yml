@@ -345,5 +345,5 @@ jobs:
 
           gh release upload
           "v4.1-${{ github.run_number }}"
-          ./release/cli/XC-CLI.zip.zip
+          ./release/cli/XC-CLI.zip
           --repo "${{ github.repository }}"
