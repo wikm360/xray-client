@@ -46,6 +46,25 @@ jobs:
           name: windows-release
           path: ./release/XC-windows.zip
 
+  build-cli:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp -r ./CLI/CLI.py ./release/
+          cp -r ./CLI/convert ./release/
+          powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-CLI.zip
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: cli-release
+          path: ./release/XC-CLI.zip
+
   build-ubuntu:
     runs-on: ubuntu-latest
     steps:
@@ -245,7 +264,7 @@ jobs:
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-fedora, build-macos]
+    needs: [build-windows, build-ubuntu, build-fedora, build-macos , build-cli]
     runs-on: ubuntu-latest
 
     permissions:
@@ -279,6 +298,12 @@ jobs:
         with:
           name: macos-release
           path: ./release/macos/
+      
+      - name: Download Release Assets
+        uses: actions/download-artifact@v3
+        with:
+          name: cli-release
+          path: ./release/cli/
 
       - name: Create GitHub Release
         env:
@@ -314,4 +339,9 @@ jobs:
           gh release upload
           "v4.1-${{ github.run_number }}"
           ./release/macos/XC-macos.zip
+          --repo "${{ github.repository }}"
+
+          gh release upload
+          "v4.1-${{ github.run_number }}"
+          ./release/cli/XC-CLI.zip.zip
           --repo "${{ github.repository }}"
