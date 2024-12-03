@@ -279,8 +279,22 @@ def finalize_update():
     except Exception as e:
         raise Exception(f"Failed to finalize update: {str(e)}")
 
+def install_requirements(requirements_file="requirements.txt"):
+    if not os.path.exists(requirements_file):
+        print(f"file {requirements_file} does not find.")
+        return
+    
+    try:
+        print(f"Checking for Requirements : {requirements_file}...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_file])
+        print("Requirements Innstalled")
+    except subprocess.CalledProcessError as e:
+        print(f"Error in installign : {e}")
+    except Exception as e:
+        print(f"unexpected : {e}")
 
 def main_menu():
+    install_requirements()
     # Clear screen for a clean start
     os.system('cls' if os.name == 'nt' else 'clear')
     

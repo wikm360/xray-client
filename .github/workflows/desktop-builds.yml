@@ -56,7 +56,9 @@ jobs:
         run: |
           mkdir release
           cp -r ./CLI/CLI.py ./release/
-          cp -r ./CLI/convert ./release/
+          cp -r ./CLI/convert.py ./release/
+          cp -r ./CLI/const.py ./release/
+          cp -r ./CLI/requirements.txt ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-CLI.zip
 
       - name: Upload Release Asset
