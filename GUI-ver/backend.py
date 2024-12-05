@@ -85,6 +85,27 @@ class XrayBackend:
                 json.dump(dict_name, f, ensure_ascii=False, indent=4)
             with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
                 f.write(url)
+        
+        elif "{" in url :
+            if url.strip():
+                directory_path = f"./subs/{name}"
+                Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+                data = json.loads(url)
+                del data["dns"]
+                data["inbounds"][0]["port"] = 1080
+                data["inbounds"][1]["port"] = 1080
+                config_name = data["remarks"]
+                config_json = json.dumps(data , indent=4)
+
+                if config_name != "False":
+                    with open(f"./subs/{name}/0.json", "w") as f:
+                        f.write(config_json)
+            with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
+            with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                f.write(url)
+
         else  :
             config  = url
             directory_path = f"./subs/{name}"

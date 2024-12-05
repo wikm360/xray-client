@@ -366,10 +366,10 @@ class XrayClientUI:
                 index = data[0].split("/")[3].split(".")[0]
                 p = data[0].split("/")[2]
                 print(index ,  p)
-        with open(f"./subs/{p}/list.json", "r", encoding="utf-8") as file:
-            data = json.load(file)
-            self.selected_config = str(index) + " " + "-" + " " + data[index]
-        self.refresh_profile_tab(p)
+                with open(f"./subs/{p}/list.json", "r", encoding="utf-8") as file:
+                    data = json.load(file)
+                    self.selected_config = str(index) + " " + "-" + " " + data[index]
+                self.refresh_profile_tab(p)
 
 
     def show_edit_dialog(self, profile):
