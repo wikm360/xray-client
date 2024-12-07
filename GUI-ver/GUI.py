@@ -659,7 +659,7 @@ class XrayClientUI:
 
 
     def show_import_dialog(self, e):
-        def import_sub(e):
+        def import_sub(dialog):
             name = name_field.value
             url = url_field.value
             if name and url:
@@ -675,7 +675,7 @@ class XrayClientUI:
             content=ft.Column([name_field, url_field], tight=True),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda _: self.close_dialog(dialog)),
-                ft.TextButton("Import", on_click=import_sub),
+                ft.TextButton("Import", on_click=lambda _: import_sub(dialog)),
             ],
         )
         self.page.overlay.append(dialog)

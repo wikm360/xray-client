@@ -92,9 +92,15 @@ class XrayBackend:
                 Path(directory_path).mkdir(parents=True, exist_ok=True)
 
                 data = json.loads(url)
-                del data["dns"]
-                data["inbounds"][0]["port"] = 1080
-                data["inbounds"][1]["port"] = 1080
+                try :
+                    del data["dns"]
+                except Exception as e:
+                    self.log(f"Faild in delete dns Parse Json ...{e}")
+                try :
+                    data["inbounds"][0]["port"] = 1080
+                    data["inbounds"][1]["port"] = 1080
+                except Exception as e :
+                    self.log(f"Faild in chenge port Json ...  {e}")
                 config_name = data["remarks"]
                 config_json = json.dumps(data , indent=4)
 
