@@ -30,13 +30,13 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
+      - name: Build executable with flet
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/GUI.exe ./release/
+          cp -r ./dist/XC.exe ./release/
           cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
@@ -45,6 +45,27 @@ jobs:
         with:
           name: windows-release
           path: ./release/XC-windows.zip
+
+  build-cli:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp -r ./CLI/CLI.py ./release/
+          cp -r ./CLI/convert.py ./release/
+          cp -r ./CLI/const.py ./release/
+          cp -r ./CLI/requirements.txt ./release/
+          powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-CLI.zip
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: cli-release
+          path: ./release/XC-CLI.zip
 
   build-ubuntu:
     runs-on: ubuntu-latest
@@ -63,13 +84,13 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py
+      - name: Build executable with flet
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/GUI ./release/
+          cp -r ./dist/XC ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-ubuntu.zip ./release/
 
@@ -85,10 +106,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Uninstall conflicting containerd packages
-        run: sudo apt-get remove -y containerd containerd.io
+      - name: Check if Docker is Installed
+        run: docker --version || echo "Docker not found. Installing..."
 
-      - name: Install Docker dependencies
+      - name: Install Docker dependencies (if needed)
         run: |
           sudo apt-get update
           sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
@@ -99,9 +120,7 @@ jobs:
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
       - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-ce
+        run: sudo apt-get install -y docker-ce
 
       - name: Start Docker
         run: |
@@ -115,23 +134,26 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip binutils zip &&
+            dnf install -y python3 python3-pip binutils zip gcc libffi-devel &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            pyinstaller --onefile --noconsole --icon=./GUI-ver/icon.ico ./GUI-ver/GUI.py &&
-            mkdir release &&
-            cp -r ./dist/GUI ./release/ &&
-            cp -r ./GUI-ver/subs ./release/ &&
-            zip -r ./release/XC-fedora.zip ./release/
+            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm &&
+            ls -lah ./dist/
           "
-          
+
+      - name: Preprocess Release Files
+        run: |
+          mkdir -p release
+          cp -r ./dist/XC ./release/
+          zip -r ./release/XC-fedora.zip ./release/
+
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
           name: fedora-release
           path: ./release/XC-fedora.zip
-
+        
   build-macos:
     runs-on: macos-latest
     steps:
@@ -167,7 +189,6 @@ jobs:
               ]
           )
           
-          # Rest of your imports
           import flet as ft
           from backend import XrayBackend
           import threading
@@ -179,11 +200,9 @@ jobs:
           
           logging.debug("Starting imports completed")
           
-          # Your XrayClientUI class here
           class XrayClientUI:
               def __init__(self, page: ft.Page):
                   logging.debug("Initializing XrayClientUI")
-                  # Rest of your init code
           
           def main(page: ft.Page):
               try:
@@ -201,12 +220,7 @@ jobs:
           ' > ./GUI-ver/GUI.py
           
       - name: Build executable with PyInstaller
-        run: |
-          pyinstaller --clean --windowed \
-            --icon=./GUI-ver/icon.ico \
-            --collect-all flet \
-            --name XC \
-            ./GUI-ver/GUI.py
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
           
       - name: Set executable permissions
         run: |
@@ -214,9 +228,7 @@ jobs:
           
       - name: Test executable
         run: |
-          # Start the app in background
           ./dist/XC.app/Contents/MacOS/XC &
-          # Wait a bit for the app to start
           sleep 5
           # Check if process is running
           ps aux | grep XC
@@ -254,7 +266,7 @@ jobs:
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-fedora, build-macos]
+    needs: [build-windows, build-ubuntu, build-fedora, build-macos , build-cli]
     runs-on: ubuntu-latest
 
     permissions:
@@ -288,6 +300,12 @@ jobs:
         with:
           name: macos-release
           path: ./release/macos/
+      
+      - name: Download Release Assets
+        uses: actions/download-artifact@v3
+        with:
+          name: cli-release
+          path: ./release/cli/
 
       - name: Create GitHub Release
         env:
@@ -323,4 +341,9 @@ jobs:
           gh release upload
           "v4.1-${{ github.run_number }}"
           ./release/macos/XC-macos.zip
+          --repo "${{ github.repository }}"
+
+          gh release upload
+          "v4.1-${{ github.run_number }}"
+          ./release/cli/XC-CLI.zip
           --repo "${{ github.repository }}"

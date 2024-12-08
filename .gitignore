@@ -16,3 +16,4 @@ subs/
 *.log
 cache.db
 core/win/select.txt
+custom config V2rayNG.json

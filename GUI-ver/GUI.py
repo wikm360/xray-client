@@ -7,6 +7,8 @@ import time
 import checkver
 import json
 import logging
+import string
+import random
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
@@ -17,6 +19,16 @@ class XrayClientUI:
         self.debug_mod = self.read_settinng("debug")
         self.backend.log_callback = self.log
         self.page.padding = 20 # padding of all page
+        self.page.window.min_width = 600
+        self.page.window.min_height =730
+        self.useragent = self.read_settinng("useragent")
+
+        def handle_window_event(e):
+            if e.data == "close":
+                self.page.open(confirm_dialog)
+        self.page.window.prevent_close = True
+        self.page.window.on_event = handle_window_event
+
         self.selected_config = None
         self.real_delay_stat = None
         self.ping_all_button = None
@@ -32,11 +44,31 @@ class XrayClientUI:
         )
         self.log_buffer = deque(maxlen=100)
         self.last_logged_message = None
+
+        def yes_click(e):
+            if self.backend.xray_process is None:
+                self.page.window.destroy()
+                return
+            self.toggle_xray(e="1")
+            self.page.window.destroy()
+        def no_click(e):
+            self.page.close(confirm_dialog)
+        confirm_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Please confirm"),
+            content=ft.Text("Do you really want to exit XC ?"),
+            actions=[
+                ft.ElevatedButton("Yes", on_click=yes_click),
+                ft.OutlinedButton("No", on_click=no_click),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
         self.create_ui()
     
     @staticmethod
     def read_settinng (type) :
-        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off"}
+        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" , "useragent" : "XC(Xray-Client)"}
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
                 f = file.read()
@@ -46,18 +78,21 @@ class XrayClientUI:
                         ping = data.get("ping", default_settings["ping"])
                         theme = data.get("theme", default_settings["theme"])
                         debug = data.get("debug", default_settings["debug"])
+                        useragent = data.get("useragent", default_settings["useragent"])
                     except json.JSONDecodeError:
 
                         print("Error decoding JSON, using default settings.")
                         ping = default_settings["ping"]
                         theme = default_settings["theme"]
                         debug = default_settings["debug"]
+                        useragent = default_settings["useragent"]
                 else:
 
                     print("File is empty, using default settings.")
                     ping = default_settings["ping"]
                     theme = default_settings["theme"]
                     debug = default_settings["debug"]
+                    useragent = default_settings["useragent"]
                     with open("./setting.json" , "w") as file :
                         data = json.dumps(default_settings , indent=4)
                         file.write(data)
@@ -66,6 +101,7 @@ class XrayClientUI:
             ping = default_settings["ping"]
             theme = default_settings["theme"]
             debug = default_settings["debug"]
+            useragent = default_settings["useragent"]
             with open("./setting.json" , "w") as file :
                 data = json.dumps(default_settings , indent=4)
                 file.write(data)
@@ -78,9 +114,11 @@ class XrayClientUI:
                 return ft.ThemeMode.LIGHT
         elif type == "debug" :
             return debug
+        elif type == "useragent" :
+            return useragent
 
     def write_setting(self , type , value):
-        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" }
+        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" , "useragent" : "XC(Xray-Client)"}
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
                 f = file.read()
@@ -104,6 +142,8 @@ class XrayClientUI:
             data["theme"] = value
         elif type == "debug" :
             data["debug"] = value
+        elif type ==  "useragent" :
+            data["useragent"] = value
 
         with open("./setting.json", "w") as file:
             json_data = json.dumps(data, indent=4)
@@ -330,6 +370,23 @@ class XrayClientUI:
         self.tabs.tabs.append(ft.Tab(text=profile, content=tab_content))
         self.page.update()
 
+        # check previous selected config
+        with open(f"./core/{self.backend.os_sys}/select.txt", "r") as file:
+            data = file.readlines()
+            if data:
+                index = data[0].split("/")[3].split(".")[0]
+                p = data[0].split("/")[2]
+                print(index, p)
+
+                json_path = f"./subs/{p}/list.json"
+                if os.path.exists(json_path):
+                    with open(json_path, "r", encoding="utf-8") as file:
+                        data = json.load(file)
+                        self.selected_config = str(index) + " " + "-" + " " + data[index]
+                    self.refresh_profile_tab(p)
+                else:
+                    print(f"config NotFound : {json_path}")
+
 
     def show_edit_dialog(self, profile):
         profile_path = f"./subs/{profile}"
@@ -406,6 +463,17 @@ class XrayClientUI:
             on_change=self.change_theme,
             expand=True,
         )
+
+        useragent_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option("XC(Xray-Client)"),
+                ft.dropdown.Option("v2rayNG/1.9.16"),
+            ],
+            value=self.useragent,
+            on_change= self.change_useragent,
+            expand=True
+            )
+
         debug_dropdown = ft.Dropdown(
             options=[
                 ft.dropdown.Option("on"),
@@ -454,6 +522,10 @@ class XrayClientUI:
                         ),
                         ft.Row(
                             [ft.Text("Debug : "), debug_dropdown],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Row(
+                            [ft.Text("User-Agent : "), useragent_dropdown],
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         ),
                         ft.Divider(height=20, thickness=1),
@@ -584,6 +656,11 @@ class XrayClientUI:
         except Exception as e:
             self.log(f"Error selecting config: {str(e)}")
         self.refresh_profile_tab(profile)
+        if self.backend.xray_process is None:
+            pass
+        else :
+            self.toggle_xray(e="default")
+            self.toggle_xray(e="default")
 
     def refresh_profile_tab(self , profile):
         if profile == "all" :
@@ -613,7 +690,7 @@ class XrayClientUI:
 
 
     def show_import_dialog(self, e):
-        def import_sub(e):
+        def import_sub(dialog):
             name = name_field.value
             url = url_field.value
             if name and url:
@@ -622,19 +699,57 @@ class XrayClientUI:
                 dialog.open = False
                 self.page.update()
 
+        def load_json_file(picker_result):
+            if picker_result.files:
+                file_path = picker_result.files[0].path
+                try:
+                    with open(file_path, "r", encoding="utf-8") as file:
+                        data = file.read()
+                        letters = string.ascii_letters
+                        random_word = ''.join(random.choice(letters) for _ in range(8))
+                        self.backend.import_subscription(random_word, data)
+                        self.refresh_profile_tab("all")
+                        dialog.open = False
+                        self.page.update()
+
+                except Exception as ex:
+                    print(f"Error loading JSON file: {ex}")
+
+        # Input fields for subscription
         name_field = ft.TextField(label="Profile Name")
         url_field = ft.TextField(label="URL")
+
+        # FilePicker for JSON selection
+        file_picker = ft.FilePicker(on_result=load_json_file)
+
         dialog = ft.AlertDialog(
             title=ft.Text("Import Subscription"),
-            content=ft.Column([name_field, url_field], tight=True),
+            content=ft.Column(
+                [
+                    name_field,
+                    url_field,
+                    ft.TextButton(
+                        "Load JSON File",
+                        on_click=lambda _: file_picker.pick_files(
+                            allow_multiple=False, file_type="application/json"
+                        ),
+                    ),
+                ],
+                tight=True,
+            ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda _: self.close_dialog(dialog)),
-                ft.TextButton("Import", on_click=import_sub),
+                ft.TextButton("Import", on_click=lambda _: import_sub(dialog)),
             ],
         )
+
+        # Add FilePicker to page overlay
+        self.page.overlay.append(file_picker)
         self.page.overlay.append(dialog)
+
         dialog.open = True
         self.page.update()
+
 
     def close_dialog(self, dialog):
         dialog.open = False
@@ -804,6 +919,10 @@ class XrayClientUI:
         self.page.update()
         self.refresh_profile_tab(profile="all")
         print(f"Theme changed to: {selected_theme}")
+
+    def change_useragent(self, event) :
+        self.useragent = event.control.value
+        self.write_setting("useragent" , self.useragent)
 
     def change_ping_type(self, e):
         selected_ping_type = e.control.value
