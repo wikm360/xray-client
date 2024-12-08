@@ -23,6 +23,7 @@ class XrayBackend:
         self.xray_version = XRAY_VERSION
         self.log_callback = None
         self.close_event = threading.Event()
+        self.useragant = lambda: json.load(open("./setting.json", "r"))["useragent"]
 
     def os_det(self):
         system_os = platform.system()
@@ -61,72 +62,111 @@ class XrayBackend:
         return configs
 
     def import_subscription(self, name, url):
-        if "https" in url :
-            headers = {"user-agent": "XC(Xray-Client)"}
-            r = requests.get(url=url, headers=headers)
-            text = r.text
-            decoded_bytes = base64.b64decode(text)
-            decoded_str = decoded_bytes.decode('utf-8')
-            list_configs = decoded_str.split("\n")
+        if isinstance (url , str)  :
+            if url.startswith("https"):
+                useragent = str(self.useragant())
+                headers = {"user-agent": useragent}
+                r = requests.get(url=url, headers=headers)
+                text = r.text
+                if "[" in text :
+                    #  custom
+                    self.log("Custom config Detect ...")
+                    data = r.json()
+                    dict_name = {}
+                    count = 0
+                    for config in data :
+                        directory_path = f"./subs/{name}"
+                        Path(directory_path).mkdir(parents=True, exist_ok=True)
 
-            directory_path = f"./subs/{name}"
-            Path(directory_path).mkdir(parents=True, exist_ok=True)
+                        try :
+                            del config["dns"]
+                        except Exception as e:
+                            self.log(f"Faild in delete dns Parse Json ...{e}")
+                        try :
+                            config["inbounds"][0]["port"] = 1080
+                            config["inbounds"][1]["port"] = 1081
+                        except Exception as e :
+                            self.log(f"Faild in chenge port Json ...  {e}")
+                        config_name = config["remarks"]
+                        config_json = json.dumps(config , indent=4)
 
-            dict_name = {}
-            for count, config in enumerate(list_configs):
-                if config.strip():
-                    config_json, config_name = convert.convert(config)
+                        if config_name != "False":
+                            with open(f"./subs/{name}/{count}.json", "w") as f:
+                                f.write(config_json)
+                            dict_name[count] = config_name
+                            count += 1
+                    with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                        json.dump(dict_name, f, ensure_ascii=False, indent=4)
+                    with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                        f.write(url)
+                    
+                else :    
+                    decoded_bytes = base64.b64decode(text)
+                    decoded_str = decoded_bytes.decode('utf-8')
+                    list_configs = decoded_str.split("\n")
+
+                    directory_path = f"./subs/{name}"
+                    Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+                    dict_name = {}
+                    for count, config in enumerate(list_configs):
+                        if config.strip():
+                            config_json, config_name = convert.convert(config)
+                            if config_name != "False":
+                                with open(f"./subs/{name}/{count}.json", "w") as f:
+                                    f.write(config_json)
+                                dict_name[count] = config_name
+
+                    with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                        json.dump(dict_name, f, ensure_ascii=False, indent=4)
+                    with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                        f.write(url)
+            
+            # one costum config
+            elif "{" in url :
+                if url.strip():
+                    directory_path = f"./subs/{name}"
+                    Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+                    data = json.loads(url)
+                    try :
+                        del data["dns"]
+                    except Exception as e:
+                        self.log(f"Faild in delete dns Parse Json ...{e}")
+                    try :
+                        data["inbounds"][0]["port"] = 1080
+                        data["inbounds"][1]["port"] = 1081
+                    except Exception as e :
+                        self.log(f"Faild in chenge port Json ...  {e}")
+                    config_name = data["remarks"]
+                    config_json = json.dumps(data , indent=4)
+
                     if config_name != "False":
-                        with open(f"./subs/{name}/{count}.json", "w") as f:
+                        with open(f"./subs/{name}/0.json", "w") as f:
                             f.write(config_json)
-                        dict_name[count] = config_name
+                with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                    json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
+                with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                    f.write(url)
 
-            with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                json.dump(dict_name, f, ensure_ascii=False, indent=4)
-            with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                f.write(url)
-        
-        elif "{" in url :
-            if url.strip():
+            #one vmess or vless config
+            else  :
+                config  = url
                 directory_path = f"./subs/{name}"
                 Path(directory_path).mkdir(parents=True, exist_ok=True)
 
-                data = json.loads(url)
-                try :
-                    del data["dns"]
-                except Exception as e:
-                    self.log(f"Faild in delete dns Parse Json ...{e}")
-                try :
-                    data["inbounds"][0]["port"] = 1080
-                    data["inbounds"][1]["port"] = 1080
-                except Exception as e :
-                    self.log(f"Faild in chenge port Json ...  {e}")
-                config_name = data["remarks"]
-                config_json = json.dumps(data , indent=4)
+                if config.strip():
+                    config_json, config_name = convert.convert(config)
+                    if config_name != "False":
+                        with open(f"./subs/{name}/0.json", "w") as f:
+                            f.write(config_json)
+                with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
+                    json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
+                with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                    f.write(url)
 
-                if config_name != "False":
-                    with open(f"./subs/{name}/0.json", "w") as f:
-                        f.write(config_json)
-            with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
-            with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                f.write(url)
-
-        else  :
-            config  = url
-            directory_path = f"./subs/{name}"
-            Path(directory_path).mkdir(parents=True, exist_ok=True)
-
-            if config.strip():
-                config_json, config_name = convert.convert(config)
-                if config_name != "False":
-                    with open(f"./subs/{name}/0.json", "w") as f:
-                        f.write(config_json)
-            with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
-            with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                f.write(url)
-
+        else :
+            self.log("URL not  String ...")
 
     def update_subscription(self, profile):
         path = f"./subs/{profile}/url.txt"
