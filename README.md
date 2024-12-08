@@ -17,10 +17,10 @@ A simple CLI / GUI Xray client for manage subscription and more based on python
 
 ## Screenshots
 
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/1.png?raw=true)
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/2.png?raw=true)
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/3.png?raw=true)
-![App Screenshot](https://github.com/wikm360/xray-client/blob/dev/screenshot/4.png?raw=true)
+![App Screenshot](https://github.com/wikm360/xray-client/blob/main/screenshot/1.png?raw=true)
+![App Screenshot](https://github.com/wikm360/xray-client/blob/main/screenshot/2.png?raw=true)
+![App Screenshot](https://github.com/wikm360/xray-client/blob/main/screenshot/3.png?raw=true)
+![App Screenshot](https://github.com/wikm360/xray-client/blob/main/screenshot/4.png?raw=true)
 
 
 ## Installation
