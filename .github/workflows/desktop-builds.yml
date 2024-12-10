@@ -179,8 +179,10 @@ jobs:
               --windowed --icon=./GUI-ver/icon.ico \
               ./GUI-ver/GUI.py --distpath ./dist_arm64
 
-      - name: Build x86_64 executable
+      - name: Build x86_64 executable using Rosetta
         run: |
+          arch -x86_64 /usr/bin/python3 -m pip install --upgrade pip
+          arch -x86_64 /usr/bin/python3 -m pip install pyinstaller pillow
           arch -x86_64 pyinstaller --onefile --name XC_x86_64 \
               --windowed --icon=./GUI-ver/icon.ico \
               ./GUI-ver/GUI.py --distpath ./dist_x86_64
@@ -212,7 +214,6 @@ jobs:
         with:
           name: macos-x86_64-release
           path: ./release/XC-macos-x86_64.zip
-
 
   github-release:
     name: Upload to GitHub Release
