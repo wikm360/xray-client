@@ -170,30 +170,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller pillow
           pip install -r requirements.txt
-          pip install flet-desktop
+          pip install  flet-desktop
           pip install pyobjc-core pyobjc-framework-Cocoa # Required for macOS GUI
 
-      - name: Build x86_64 executable
+      - name: Build x86_64 executable with PyInstaller
         run: |
-          flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC_x86_64 \
-            --product-name XC --file-description "XC Created By wikm" \
-            --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} \
-            --company-name wikm --distpath ./dist_x86_64 --onefile \
-            --target-arch x86_64
+          pyinstaller --onefile --name XC_x86_64 \
+            --windowed --icon=./GUI-ver/icon.ico \
+            ./GUI-ver/GUI.py --distpath ./dist_x86_64
 
-      - name: Build ARM64 executable
+      - name: Build ARM64 executable with PyInstaller
         run: |
-          flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC_arm64 \
-            --product-name XC --file-description "XC Created By wikm" \
-            --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} \
-            --company-name wikm --distpath ./dist_arm64 --onefile \
-            --target-arch arm64
+          pyinstaller --onefile --name XC_arm64 \
+            --windowed --icon=./GUI-ver/icon.ico \
+            ./GUI-ver/GUI.py --distpath ./dist_arm64
 
       - name: Combine into Universal Binary
         run: |
           mkdir -p ./dist_universal
           lipo -create -output ./dist_universal/XC \
-            ./dist_x86_64/XC ./dist_arm64/XC
+            ./dist_x86_64/XC_x86_64 ./dist_arm64/XC_arm64
 
       - name: Test executable (Universal Binary)
         run: |
