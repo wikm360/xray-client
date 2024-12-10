@@ -159,110 +159,79 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install pillow
+          pip install pyinstaller pillow
           pip install -r requirements.txt
+          pip install flet-desktop
           pip install pyobjc-core pyobjc-framework-Cocoa # Required for macOS GUI
-          
-      - name: Create debug logger
+
+      - name: Build x86_64 executable
         run: |
-          echo '
-          import logging
-          import sys
-          
-          # Setup logging
-          logging.basicConfig(
-              level=logging.DEBUG,
-              format="%(asctime)s [%(levelname)s] %(message)s",
-              handlers=[
-                  logging.FileHandler("debug.log"),
-                  logging.StreamHandler(sys.stdout)
-              ]
-          )
-          
-          import flet as ft
-          from backend import XrayBackend
-          import threading
-          import os
-          from collections import deque
-          import time
-          import checkver
-          import json
-          
-          logging.debug("Starting imports completed")
-          
-          class XrayClientUI:
-              def __init__(self, page: ft.Page):
-                  logging.debug("Initializing XrayClientUI")
-          
-          def main(page: ft.Page):
-              try:
-                  logging.debug("Starting main function")
-                  XrayClientUI(page)
-              except Exception as e:
-                  logging.error(f"Error in main: {str(e)}", exc_info=True)
-          
-          if __name__ == "__main__":
-              try:
-                  logging.debug("Starting application")
-                  ft.app(target=main)
-              except Exception as e:
-                  logging.error(f"Application failed to start: {str(e)}", exc_info=True)
-          ' > ./GUI-ver/GUI.py
-          
-      - name: Build executable with PyInstaller
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
-          
-      - name: Set executable permissions
+          flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC_x86_64 \
+            --product-name XC --file-description "XC Created By wikm" \
+            --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} \
+            --company-name wikm --distpath ./dist_x86_64 --onefile \
+            --target-arch x86_64
+
+      - name: Build ARM64 executable
         run: |
-          chmod +x ./dist/XC.app/Contents/MacOS/XC
-          
-      - name: Test executable
+          flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC_arm64 \
+            --product-name XC --file-description "XC Created By wikm" \
+            --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} \
+            --company-name wikm --distpath ./dist_arm64 --onefile \
+            --target-arch arm64
+
+      - name: Combine into Universal Binary
         run: |
-          ./dist/XC.app/Contents/MacOS/XC &
+          mkdir -p ./dist_universal
+          lipo -create -output ./dist_universal/XC \
+            ./dist_x86_64/XC ./dist_arm64/XC
+
+      - name: Test executable (Universal Binary)
+        run: |
+          chmod +x ./dist_universal/XC
+          ./dist_universal/XC &
           sleep 5
-          # Check if process is running
-          ps aux | grep XC
-          # Capture any logs
+          ps aux | grep XC || echo "Process not found."
           if [ -f debug.log ]; then
             echo "Debug log contents:"
             cat debug.log
           fi
-          
+
       - name: Create release directory and copy files
         run: |
           mkdir -p release/XC
-          cp -R ./dist/XC.app release/XC/
+          cp -R ./dist_universal/XC release/XC/
           cp -R ./GUI-ver/subs release/XC/
-          
+
       - name: Create ZIP archive
         run: |
           cd release
-          zip -r XC-macos.zip XC
+          zip -r XC-macos-universal.zip XC
           cd ..
-          
+
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
           name: macos-release
-          path: ./release/XC-macos.zip
-          
+          path: ./release/XC-macos-universal.zip
+
       - name: Upload Debug Logs
         uses: actions/upload-artifact@v3
         with:
           name: debug-logs
           path: |
             debug.log
-            ./dist/XC.app/Contents/MacOS/debug.log
+            ./dist_universal/debug.log
+
 
   github-release:
     name: Upload to GitHub Release
