@@ -154,79 +154,64 @@ jobs:
           name: fedora-release
           path: ./release/XC-fedora.zip
         
+
   build-macos:
     runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Python ${{ env.PYTHON_VERSION }}
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: 3.12
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller pillow
           pip install -r requirements.txt
-          pip install  flet-desktop
-          pip install pyobjc-core pyobjc-framework-Cocoa # Required for macOS GUI
+          pip install pyobjc-core pyobjc-framework-Cocoa
 
-      - name: Build x86_64 executable with PyInstaller
-        run: |
-          pyinstaller --onefile --name XC_x86_64 \
-            --windowed --icon=./GUI-ver/icon.ico \
-            ./GUI-ver/GUI.py --distpath ./dist_x86_64
-
-      - name: Build ARM64 executable with PyInstaller
+      - name: Build ARM64 executable
         run: |
           pyinstaller --onefile --name XC_arm64 \
-            --windowed --icon=./GUI-ver/icon.ico \
-            ./GUI-ver/GUI.py --distpath ./dist_arm64
+              --windowed --icon=./GUI-ver/icon.ico \
+              ./GUI-ver/GUI.py --distpath ./dist_arm64
 
-      - name: Combine into Universal Binary
+      - name: Build x86_64 executable
         run: |
-          mkdir -p ./dist_universal
-          lipo -create -output ./dist_universal/XC \
-            ./dist_x86_64/XC_x86_64 ./dist_arm64/XC_arm64
+          arch -x86_64 pyinstaller --onefile --name XC_x86_64 \
+              --windowed --icon=./GUI-ver/icon.ico \
+              ./GUI-ver/GUI.py --distpath ./dist_x86_64
 
-      - name: Test executable (Universal Binary)
+      - name: Package ARM64 executable
         run: |
-          chmod +x ./dist_universal/XC
-          ./dist_universal/XC &
-          sleep 5
-          ps aux | grep XC || echo "Process not found."
-          if [ -f debug.log ]; then
-            echo "Debug log contents:"
-            cat debug.log
-          fi
-
-      - name: Create release directory and copy files
-        run: |
-          mkdir -p release/XC
-          cp -R ./dist_universal/XC release/XC/
-          cp -R ./GUI-ver/subs release/XC/
-
-      - name: Create ZIP archive
-        run: |
+          mkdir -p release/ARM64
+          cp -R ./dist_arm64/XC_arm64 release/ARM64/
           cd release
-          zip -r XC-macos-universal.zip XC
+          zip -r XC-macos-arm64.zip ARM64
           cd ..
 
-      - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
-        with:
-          name: macos-release
-          path: ./release/XC-macos-universal.zip
+      - name: Package x86_64 executable
+        run: |
+          mkdir -p release/x86_64
+          cp -R ./dist_x86_64/XC_x86_64 release/x86_64/
+          cd release
+          zip -r XC-macos-x86_64.zip x86_64
+          cd ..
 
-      - name: Upload Debug Logs
+      - name: Upload ARM64 Release
         uses: actions/upload-artifact@v3
         with:
-          name: debug-logs
-          path: |
-            debug.log
-            ./dist_universal/debug.log
+          name: macos-arm64-release
+          path: ./release/XC-macos-arm64.zip
+
+      - name: Upload x86_64 Release
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-x86_64-release
+          path: ./release/XC-macos-x86_64.zip
 
 
   github-release:
