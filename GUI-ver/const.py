@@ -4,6 +4,9 @@ import os
 def os_det():
     system_os = platform.system()
     if system_os == "Windows":
+        version = platform.version()
+        if version.startswith("6.1"):
+            return "win7"
         return "win"
     elif system_os == "Linux":
         return "linux"
@@ -12,7 +15,7 @@ def os_det():
 
 OS_SYS = os_det()
 
-APP_VERSION = "4.1-85"
+APP_VERSION = "4.1-98"
 ROOT = "./"
 CORE_PATH = "./core"
 SAVE_PATH = "./core.zip"

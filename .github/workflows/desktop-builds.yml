@@ -155,7 +155,18 @@ jobs:
           path: ./release/XC-fedora.zip
         
   build-macos:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x86_64, arm64]
+        include:
+          - arch: x86_64
+            runner: macos-latest
+            prefix: intel
+          - arch: arm64
+            runner: macos-14
+            prefix: apple-silicon
+    
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -164,109 +175,66 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          architecture: ${{ matrix.arch }}
           
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install --upgrade setuptools wheel
           pip install pyinstaller
           pip install pillow
           pip install -r requirements.txt
-          pip install pyobjc-core pyobjc-framework-Cocoa # Required for macOS GUI
-          
-      - name: Create debug logger
-        run: |
-          echo '
-          import logging
-          import sys
-          
-          # Setup logging
-          logging.basicConfig(
-              level=logging.DEBUG,
-              format="%(asctime)s [%(levelname)s] %(message)s",
-              handlers=[
-                  logging.FileHandler("debug.log"),
-                  logging.StreamHandler(sys.stdout)
-              ]
-          )
-          
-          import flet as ft
-          from backend import XrayBackend
-          import threading
-          import os
-          from collections import deque
-          import time
-          import checkver
-          import json
-          
-          logging.debug("Starting imports completed")
-          
-          class XrayClientUI:
-              def __init__(self, page: ft.Page):
-                  logging.debug("Initializing XrayClientUI")
-          
-          def main(page: ft.Page):
-              try:
-                  logging.debug("Starting main function")
-                  XrayClientUI(page)
-              except Exception as e:
-                  logging.error(f"Error in main: {str(e)}", exc_info=True)
-          
-          if __name__ == "__main__":
-              try:
-                  logging.debug("Starting application")
-                  ft.app(target=main)
-              except Exception as e:
-                  logging.error(f"Application failed to start: {str(e)}", exc_info=True)
-          ' > ./GUI-ver/GUI.py
+          pip install pyobjc-core pyobjc-framework-Cocoa
+          pip install flet
           
       - name: Build executable with PyInstaller
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
+        run: |
+          # Create clean build directory
+          rm -rf build dist
+          
+          # Build with flet
+          flet pack \
+            -i ./GUI-ver/icon.ico \
+            ./GUI-ver/GUI.py \
+            -n XC \
+            --product-name "XC" \
+            --file-description "XC Created By wikm" \
+            --product-version "v4.1-${{ github.run_number }}" \
+            --file-version "v4.1-${{ github.run_number }}" \
+            --company-name "wikm"
+          
+      - name: Verify build
+        run: |
+          if [ ! -d "./dist/XC.app" ]; then
+            echo "Build failed - XC.app not found"
+            exit 1
+          fi
           
       - name: Set executable permissions
         run: |
           chmod +x ./dist/XC.app/Contents/MacOS/XC
+          xattr -cr ./dist/XC.app
           
-      - name: Test executable
-        run: |
-          ./dist/XC.app/Contents/MacOS/XC &
-          sleep 5
-          # Check if process is running
-          ps aux | grep XC
-          # Capture any logs
-          if [ -f debug.log ]; then
-            echo "Debug log contents:"
-            cat debug.log
-          fi
-          
-      - name: Create release directory and copy files
+      - name: Create release package
         run: |
           mkdir -p release/XC
           cp -R ./dist/XC.app release/XC/
           cp -R ./GUI-ver/subs release/XC/
           
-      - name: Create ZIP archive
-        run: |
+          # Create ZIP with architecture identifier
           cd release
-          zip -r XC-macos.zip XC
+          zip -r "XC-macos-${{ matrix.prefix }}.zip" XC
           cd ..
           
       - name: Upload Release Asset
         uses: actions/upload-artifact@v3
         with:
-          name: macos-release
-          path: ./release/XC-macos.zip
-          
-      - name: Upload Debug Logs
-        uses: actions/upload-artifact@v3
-        with:
-          name: debug-logs
-          path: |
-            debug.log
-            ./dist/XC.app/Contents/MacOS/debug.log
+          name: macos-${{ matrix.prefix }}-release
+          path: ./release/XC-macos-${{ matrix.prefix }}.zip
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-fedora, build-macos , build-cli]
+    needs: [build-windows, build-ubuntu, build-fedora, build-macos, build-cli]
     runs-on: ubuntu-latest
 
     permissions:
@@ -295,11 +263,17 @@ jobs:
           name: fedora-release
           path: ./release/fedora/
 
-      - name: Download Release Assets
+      - name: Download macOS Intel Release
         uses: actions/download-artifact@v3
         with:
-          name: macos-release
-          path: ./release/macos/
+          name: macos-intel-release
+          path: ./release/macos-intel/
+
+      - name: Download macOS Apple Silicon Release
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-apple-silicon-release
+          path: ./release/macos-apple-silicon/
       
       - name: Download Release Assets
         uses: actions/download-artifact@v3
@@ -322,28 +296,13 @@ jobs:
       - name: Upload artifacts to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/windows/XC-windows.zip
-          --repo "${{ github.repository }}"
-          
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/ubuntu/XC-ubuntu.zip
-          --repo "${{ github.repository }}"
-          
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/fedora/XC-fedora.zip
-          --repo "${{ github.repository }}"
-          
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/macos/XC-macos.zip
-          --repo "${{ github.repository }}"
-
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/cli/XC-CLI.zip
-          --repo "${{ github.repository }}"
+        run: |
+          gh release upload \
+            "v4.1-${{ github.run_number }}" \
+            ./release/windows/XC-windows.zip \
+            ./release/ubuntu/XC-ubuntu.zip \
+            ./release/fedora/XC-fedora.zip \
+            ./release/macos-intel/XC-macos-intel.zip \
+            ./release/macos-apple-silicon/XC-macos-apple-silicon.zip \
+            ./release/cli/XC-CLI.zip \
+            --repo "${{ github.repository }}"

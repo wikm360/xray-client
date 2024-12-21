@@ -642,6 +642,7 @@ class XrayClientUI:
 
             ping_button.content.controls[1].value = "Ping All"
             ping_button.data["status"] = "0"
+            self.xray_button.disabled = False
             self.page.update()
 
         threading.Thread(target=ping_worker, daemon=True).start()
@@ -688,16 +689,29 @@ class XrayClientUI:
                     break
         self.page.update()
 
-
     def show_import_dialog(self, e):
         def import_sub(dialog):
             name = name_field.value
             url = url_field.value
+            
             if name and url:
-                self.backend.import_subscription(name, url)
-                self.add_profile_tab(name)
-                dialog.open = False
+                loading_dialog.open = True
                 self.page.update()
+                
+                def process_import():
+                    try:
+                        self.backend.import_subscription(name, url)
+                        self.add_profile_tab(name)
+                        self.page.snack_bar = ft.SnackBar(ft.Text("Subscription imported successfully!"), open=True)
+                    except Exception as error:
+                        self.page.snack_bar = ft.SnackBar(ft.Text(f"Error: {error}"), open=True)
+                    finally:
+                        loading_dialog.open = False
+                        dialog.open = False
+                        self.page.update()
+
+                # Run backend import in a separate thread
+                threading.Thread(target=process_import).start()
 
         def load_json_file(picker_result):
             if picker_result.files:
@@ -710,10 +724,11 @@ class XrayClientUI:
                         self.backend.import_subscription(random_word, data)
                         self.refresh_profile_tab("all")
                         dialog.open = False
+                        self.page.snack_bar = ft.SnackBar(ft.Text("JSON file imported successfully!"), open=True)
                         self.page.update()
 
                 except Exception as ex:
-                    print(f"Error loading JSON file: {ex}")
+                    self.page.snack_bar = ft.SnackBar(ft.Text(f"Error loading JSON file: {ex}"), open=True)
 
         # Input fields for subscription
         name_field = ft.TextField(label="Profile Name")
@@ -721,6 +736,13 @@ class XrayClientUI:
 
         # FilePicker for JSON selection
         file_picker = ft.FilePicker(on_result=load_json_file)
+
+        # Loading dialog
+        loading_dialog = ft.AlertDialog(
+            title=ft.Text("Loading"),
+            content=ft.ProgressBar(),
+            modal=True,
+        )
 
         dialog = ft.AlertDialog(
             title=ft.Text("Import Subscription"),
@@ -743,13 +765,11 @@ class XrayClientUI:
             ],
         )
 
-        # Add FilePicker to page overlay
-        self.page.overlay.append(file_picker)
-        self.page.overlay.append(dialog)
+        # Add FilePicker and dialogs to page overlay
+        self.page.overlay.extend([file_picker, loading_dialog, dialog])
 
         dialog.open = True
         self.page.update()
-
 
     def close_dialog(self, dialog):
         dialog.open = False
