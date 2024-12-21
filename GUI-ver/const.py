@@ -15,7 +15,7 @@ def os_det():
 
 OS_SYS = os_det()
 
-APP_VERSION = "4.1-98"
+APP_VERSION = "4.1-99"
 ROOT = "./"
 CORE_PATH = "./core"
 SAVE_PATH = "./core.zip"
