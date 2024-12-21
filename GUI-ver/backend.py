@@ -12,6 +12,8 @@ import re
 import sys
 import ctypes
 import threading
+import random
+import string
 from const import *
 
 class XrayBackend:
@@ -138,7 +140,11 @@ class XrayBackend:
                         data["inbounds"][1]["port"] = 1081
                     except Exception as e :
                         self.log(f"Faild in chenge port Json ...  {e}")
-                    config_name = data["remarks"]
+                    
+                    def generate_random_word(length=8):
+                        return ''.join(random.choices(string.ascii_letters, k=length))
+                    
+                    config_name = data.get("remarks", generate_random_word())
                     config_json = json.dumps(data , indent=4)
 
                     if config_name != "False":
