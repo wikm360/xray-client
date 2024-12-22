@@ -31,7 +31,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
 
       - name: Zip executable and folders
         run: |
@@ -85,7 +85,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
 
       - name: Zip executable and folders
         run: |
@@ -138,7 +138,7 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm &&
+            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm &&
             ls -lah ./dist/
           "
 
@@ -198,8 +198,8 @@ jobs:
             -n XC \
             --product-name "XC" \
             --file-description "XC Created By wikm" \
-            --product-version "v4.1-${{ github.run_number }}" \
-            --file-version "v4.1-${{ github.run_number }}" \
+            --product-version "v4.2-${{ github.run_number }}" \
+            --file-version "v4.2-${{ github.run_number }}" \
             --company-name "wikm"
           
       - name: Verify build
@@ -285,18 +285,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release create
-          "v4.1-${{ github.run_number }}"
+          "v4.2-${{ github.run_number }}"
           --repo "${{ github.repository }}"
           --notes ""
           --generate-notes
-          --title "Release v4.1-${{ github.run_number }}"
+          --title "Release v4.2-${{ github.run_number }}"
 
       - name: Upload artifacts to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload \
-            "v4.1-${{ github.run_number }}" \
+            "v4.2-${{ github.run_number }}" \
             ./release/windows/XC-windows.zip \
             ./release/ubuntu/XC-ubuntu.zip \
             ./release/fedora/XC-fedora.zip \
