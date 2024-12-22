@@ -16,9 +16,6 @@ def split_address_port(address_port):
 def extract_name_vmess(config):
     return config.get('ps', "Unnamed Config")
 
-import base64
-import json
-
 def decode_vmess(link):
     try:
         link = link.replace("vmess://", "")
@@ -66,6 +63,13 @@ def decode_vmess(link):
                 }
             }
 
+        elif network_type == "splithttp":
+            stream_settings["splithttpSettings"] = {
+                "host": config.get('host', ""),
+                "path": config.get('path', "/"),
+                "xmux": {"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
+            }
+
         elif network_type == "grpc":
             stream_settings["grpcSettings"] = {
                 "serviceName": config.get('path', ""),
@@ -95,6 +99,15 @@ def decode_vmess(link):
                 "fingerprint": config.get('fp', ""),
                 "alpn": config.get('alpn', ["http/1.1"]),
                 "allowInsecure": bool(config.get('allowInsecure', 1))
+            }
+
+        if config.get('security', '') == "reality":
+            stream_settings["security"] = "reality"
+            stream_settings["realitySettings"] = {
+                "allowInsecure": bool(config.get('allowInsecure', 1)),
+                "fingerprint": config.get('fingerprint', 'chrome'),
+                "serverName": config.get('serverName', ''),
+                "show": bool(config.get('show', False))
             }
 
         xray_config = {
@@ -189,58 +202,72 @@ def decode_vless(link):
     address, port = split_address_port(address_port)
     query_params = urllib.parse.parse_qs(params)
 
+    def get_param(key, default):
+        return query_params.get(key, [default])[0]
+
     stream_settings = {
-        "network": query_params.get('type', ['tcp'])[0]
+        "network": get_param('type', 'tcp')
     }
 
     if stream_settings["network"] == "tcp":
         stream_settings["tcpSettings"] = {
             "header": {
-                "type": query_params.get('headerType', ['none'])[0]
+                "type": get_param('headerType', 'none')
             }
         }
     elif stream_settings["network"] == "splithttp":
         stream_settings["splithttpSettings"] = {
-            "host": query_params.get('host', [""])[0],
-            "path": query_params.get('path', ["/"])[0],
+            "host": get_param('host', ""),
+            "path": get_param('path', "/"),
             "xmux": {"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
         }
     elif stream_settings["network"] == "ws":
         stream_settings["wsSettings"] = {
-            "path": query_params.get('path', ["/"])[0],
+            "path": get_param('path', "/"),
             "headers": {
-                "Host": query_params.get('host', [""])[0]
+                "Host": get_param('host', "")
             }
         }
     elif stream_settings["network"] == "httpupgrade":
         stream_settings["httpupgradeSettings"] = {
-            "path": query_params.get('path', ["/"])[0],
-            "host": query_params.get('host', [""])[0]
+            "path": get_param('path', "/"),
+            "host": get_param('host', "")
         }
 
     elif stream_settings["network"] == "kcp":
         stream_settings["kcpSettings"] = {
             "header": {
-                "type": query_params.get('headerType', ['none'])[0]
+                "type": get_param('headerType', 'none')
             }
         }
 
     elif stream_settings["network"] == "grpc":
         stream_settings["grpcSettings"] = {
-            "serviceName": query_params.get('serviceName', [""])[0],
-            "authority": query_params.get('authority', [""])[0],
+            "serviceName": get_param('serviceName', ""),
+            "authority": get_param('authority', ""),
             "health_check_timeout": 20,
             "idle_timeout": 60,
             "multiMode": False
         }
 
-    if query_params.get('security', ['none'])[0] == "tls":
+    if get_param('security', 'none') == "reality":
+        stream_settings["security"] = "reality"
+        stream_settings["realitySettings"] = {
+            "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true',
+            "fingerprint": get_param('fp', ""),
+            "publicKey": get_param('pbk', ""),
+            "serverName": get_param('sni', ""),
+            "shortId": get_param('sid', ""),
+            "show": False
+        }
+
+    elif get_param('security', 'none') == "tls":
         stream_settings["security"] = "tls"
         stream_settings["tlsSettings"] = {
-            "serverName": query_params.get('sni', [""])[0],
-            "fingerprint": query_params.get('fp', [""])[0],
-            "alpn": query_params.get('alpn', ["http/1.1"]),
-            "allowInsecure": query_params.get('allowInsecure', ['false'])[0].lower() == 'true'
+            "serverName": get_param('sni', ""),
+            "fingerprint": get_param('fp', ""),
+            "alpn": get_param('alpn', "http/1.1"),
+            "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true'
         }
 
     xray_config = {
