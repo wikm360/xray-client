@@ -642,7 +642,6 @@ class XrayClientUI:
 
             ping_button.content.controls[1].value = "Ping All"
             ping_button.data["status"] = "0"
-            self.xray_button.disabled = False
             self.page.update()
 
         threading.Thread(target=ping_worker, daemon=True).start()
