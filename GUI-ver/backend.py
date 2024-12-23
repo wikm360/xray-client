@@ -14,6 +14,8 @@ import ctypes
 import threading
 import random
 import string
+import wmi
+import pythoncom
 from const import *
 
 class XrayBackend:
@@ -283,6 +285,23 @@ class XrayBackend:
             json.dump(data, file, indent=4)
         print("singbox-config write success")
 
+    def remove_tun_interface(self):
+        try:
+            pythoncom.CoInitialize()
+            c = wmi.WMI()
+            
+            for interface in c.Win32_NetworkAdapter():
+                print(interface)
+                if "wintun userspace tunnel" in interface.Name.lower():
+                    interface.Disable()
+                    return True
+                    
+            pythoncom.CoUninitialize()
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+        return False
+
     def run(self, config_path, type="proxy", sudo_password=None):
         def is_admin_windows():
             try:
@@ -390,6 +409,11 @@ class XrayBackend:
             return f"Error starting Xray or Sing-box: {str(e)}"
 
     def run_tun(self , config_path) :
+        r = self.remove_tun_interface()
+        if r :
+            self.log("previous interfaces Deleted  ...")
+        else  :
+            self.log("Interfaces Not Found to Delete")
         singbox_config_path = f'./core/{OS_SYS}/singbox-config.json'
         try:
             with open(singbox_config_path, "r") as file:
