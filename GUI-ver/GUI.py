@@ -573,7 +573,35 @@ class XrayClientUI:
 
     def create_config_tile_with_ping(self, config, profile):
         is_selected = config == self.selected_config
-        
+        def ping_selected_config(e):
+            if self.ping_type == "Real-delay":
+                self.xray_button.disabled = True
+                self.xray_button.content = ft.Row (
+                                [
+                                    ft.Icon(ft.icons.PLAY_ARROW),
+                                    ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                spacing=8,
+                            )
+                self.xray_button.style = ft.ButtonStyle(
+                                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                                shape=ft.RoundedRectangleBorder(radius=10),
+                                color={
+                                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                                },
+                                bgcolor={
+                                    ft.ControlState.DEFAULT: ft.colors.GREEN,
+                                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                                },
+                            )
+            config_num = config.split("-")[0].strip()
+            result = self.backend.ping_config(profile, config_num, self.ping_type)
+            e.control.trailing.content.value = f"Ping: {result}"
+            self.xray_button.disabled = False
+            self.page.update()
+
         return ft.ListTile(
             leading=ft.Icon(
                 ft.icons.CLOUD,
@@ -584,7 +612,7 @@ class XrayClientUI:
                 content=ft.Text(
                     config,
                     size=16,
-                    weight=ft.FontWeight.W_500 if is_selected else ft.FontWeight.NORMAL
+                    weight=ft.FontWeight.W_500 if is_selected else ft.FontWeight.NORMAL,
                 ),
                 bgcolor=ft.colors.BLUE_100 if is_selected else ft.colors.TRANSPARENT,
                 padding=ft.padding.all(12),
@@ -601,8 +629,9 @@ class XrayClientUI:
             ),
             selected=is_selected,
             on_click=lambda _, c=config, p=profile: self.select_config(c, p),
+            on_long_press=ping_selected_config,
+            tooltip="Hold to Ping",
         )
-
 
     # "0"  = cancel does not exist
     #  "1" = cancel showed
