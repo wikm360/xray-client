@@ -16,159 +16,182 @@ def split_address_port(address_port):
 def extract_name_vmess(config):
     return config.get('ps', "Unnamed Config")
 
-import base64
-import json
-
 def decode_vmess(link):
-    link = link.replace("vmess://", "")
-    decoded_bytes = base64.b64decode(link)
-    decoded_str = decoded_bytes.decode('utf-8')
-    config = json.loads(decoded_str)
-    
-    config_name = extract_name_vmess(config)
+    try:
+        link = link.replace("vmess://", "")
+        decoded_bytes = base64.b64decode(link)
+        decoded_str = decoded_bytes.decode('utf-8')
+        config = json.loads(decoded_str)
+        
+        config_name = extract_name_vmess(config)
 
-    address, port = split_address_port(f"{config['add']}:{config['port']}")
+        address = config.get('add', '')
+        port = config.get('port', '')
+        address, port = split_address_port(f"{address}:{port}")
 
-    stream_settings = {
-        "network": config['net'],
-        "security": "none"
-    }
+        stream_settings = {
+            "network": config.get('net', 'tcp'),
+            "security": "none"
+        }
 
-    if config['net'] == "tcp":
-        stream_settings["tcpSettings"] = {
-            "header": {
-                "type": config.get('type', 'none'),
-                "request": {
-                    "version": "1.1",
-                    "method": "GET",
-                    "path": config.get('path', ["/"]),
-                    "headers": {
-                        "Host": config.get('host', [""]),
-                        "User-Agent": config.get('ua', [""]),
-                        "Accept-Encoding": config.get('accept-encoding', ["gzip, deflate"]),
-                        "Connection": config.get('connection', ["keep-alive"]),
-                        "Pragma": config.get('pragma', "no-cache")
+        network_type = config.get('net', 'tcp')
+        
+        if network_type == "tcp":
+            stream_settings["tcpSettings"] = {
+                "header": {
+                    "type": config.get('type', 'none'),
+                    "request": {
+                        "version": "1.1",
+                        "method": "GET",
+                        "path": config.get('path', ["/"]),
+                        "headers": {
+                            "Host": [config.get('host', "")],
+                            "User-Agent": [config.get('ua', "")],
+                            "Accept-Encoding": ["gzip, deflate"],
+                            "Connection": ["keep-alive"],
+                            "Pragma": "no-cache"
+                        }
                     }
                 }
             }
-        }
 
-    elif config['net'] == "ws":
-        stream_settings["wsSettings"] = {
-            "path": config.get('path', ""),
-            "headers": {
-                "Host": config.get('host', "")
+        elif network_type == "ws":
+            stream_settings["wsSettings"] = {
+                "path": config.get('path', ""),
+                "headers": {
+                    "Host": config.get('host', "")
+                }
             }
-        }
 
-    elif config['net'] == "kcp":
-        stream_settings["kcpSettings"] = {
-            "header": {
-                "type": config.get('type', 'none')
+        elif network_type == "splithttp":
+            stream_settings["splithttpSettings"] = {
+                "host": config.get('host', ""),
+                "path": config.get('path', "/"),
+                "xmux": {"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
             }
-        }
 
-    elif config['net'] == "splithttp":
-        stream_settings["splithttpSettings"] = {
-            "host": config.get('host', ""),
-            "path": config.get('path', "/"),
-            "xmux" :{"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
-        }
+        elif network_type == "grpc":
+            stream_settings["grpcSettings"] = {
+                "serviceName": config.get('path', ""),
+                "authority": config.get('host', ""),
+                "health_check_timeout": 20,
+                "idle_timeout": 60,
+                "multiMode": False
+            }
+        elif network_type == "httpupgrade":
+            stream_settings["network"] = "httpupgrade"
+            stream_settings["httpupgradeSettings"] = {
+                "host": config.get('host', ""),
+                "path": config.get('path', "/")
+            }
 
-    if config.get('tls') == "tls":
-        stream_settings["security"] = "tls"
-        stream_settings["tlsSettings"] = {
-            "serverName": config.get('sni', ""),
-            "fingerprint": config.get('fp', ""),
-            "alpn": config.get('alpn', ["http/1.1"]),
-            "allowInsecure": True if config.get('allowInsecure') == 1 else False
-        }
+        elif network_type == "kcp":
+            stream_settings["kcpSettings"] = {
+                "header": {
+                    "type": config.get('type', 'none')
+                }
+            }
 
-    xray_config = {
-        "log": {"loglevel": "info"},
-        "inbounds": [{
-            "tag": "socks",
-            "port": 1080,
-            "listen": "127.0.0.1" ,
-            "protocol": "socks" ,
-            "sniffing": {
-                "enabled": True ,
-                "destOverride": ["http","tls"],
-                "routeOnly": False} ,
-            "settings": {
-                "auth": "noauth",
-                "udp": True ,
-                "allowTransparent": False}
-        }],
-        "outbounds": [{
-            "protocol": "vmess",
-            "settings": {
-                "vnext": [{
-                    "address": address,
-                    "port": int(port),
-                    "users": [{
-                        "id": config['id'],
-                        "alterId": int(config['aid']),
-                        "security": config['scy'],
-                        "level": config.get('level', 8),
-                        "encryption": config.get('encryption', ''),
-                        "flow": config.get('flow', '')
+        if config.get('tls') == "tls":
+            stream_settings["security"] = "tls"
+            stream_settings["tlsSettings"] = {
+                "serverName": config.get('sni', ""),
+                "fingerprint": config.get('fp', ""),
+                "alpn": config.get('alpn', ["http/1.1"]),
+                "allowInsecure": bool(config.get('allowInsecure', 1))
+            }
+
+        if config.get('security', '') == "reality":
+            stream_settings["security"] = "reality"
+            stream_settings["realitySettings"] = {
+                "allowInsecure": bool(config.get('allowInsecure', 1)),
+                "fingerprint": config.get('fingerprint', 'chrome'),
+                "serverName": config.get('serverName', ''),
+                "show": bool(config.get('show', False))
+            }
+
+        xray_config = {
+            "log": {"loglevel": "info"},
+            "inbounds": [{
+                "tag": "socks",
+                "port": 1080,
+                "listen": "127.0.0.1",
+                "protocol": "socks",
+                "sniffing": {
+                    "enabled": True,
+                    "destOverride": ["http", "tls"],
+                    "routeOnly": False
+                },
+                "settings": {
+                    "auth": "noauth",
+                    "udp": True,
+                    "allowTransparent": False
+                }
+            }],
+            "outbounds": [{
+                "protocol": "vmess",
+                "settings": {
+                    "vnext": [{
+                        "address": address,
+                        "port": int(port) if port else 443,
+                        "users": [{
+                            "id": config.get('id', ''),
+                            "alterId": int(config.get('aid', 0)),
+                            "security": config.get('scy', 'auto'),
+                            "level": config.get('level', 8),
+                            "encryption": config.get('encryption', ''),
+                            "flow": config.get('flow', '')
+                        }]
                     }]
-                }]
-            },
-            "streamSettings": stream_settings,
-            "tag": "proxy"
-        }],
-        "dns": {
-            "hosts": {
-            "dns.google": "8.8.8.8"
-            },
-            "servers": [
-            {
-                "address": "223.5.5.5",
-                "domains": [
-                "wikm.ir"
+                },
+                "streamSettings": stream_settings,
+                "tag": "proxy"
+            }],
+            "dns": {
+                "hosts": {
+                    "dns.google": "8.8.8.8"
+                },
+                "servers": [
+                    {
+                        "address": "223.5.5.5",
+                        "domains": ["wikm.ir"]
+                    },
+                    "1.1.1.1",
+                    "8.8.8.8",
+                    "https://dns.google/dns-query",
+                    {
+                        "address": "223.5.5.5",
+                        "domains": [address] if address else []
+                    }
                 ]
             },
-            "1.1.1.1",
-            "8.8.8.8",
-            "https://dns.google/dns-query",
-            {
-                "address": "223.5.5.5",
-                "domains": [
-                address
+            "routing": {
+                "domainStrategy": "AsIs",
+                "rules": [
+                    {
+                        "type": "field",
+                        "inboundTag": ["api"],
+                        "outboundTag": "api"
+                    },
+                    {
+                        "type": "field",
+                        "port": "443",
+                        "network": "udp",
+                        "outboundTag": "block"
+                    },
+                    {
+                        "type": "field",
+                        "port": "0-65535",
+                        "outboundTag": "proxy"
+                    }
                 ]
             }
-            ]
-        },
-        "routing": {
-            "domainStrategy": "AsIs",
-            "rules": [
-            {
-                "type": "field",
-                "inboundTag": [
-                "api"
-                ],
-                "outboundTag": "api"
-            },
-            {
-                "type": "field",
-                "port": "443",
-                "network": "udp",
-                "outboundTag": "block"
-            },
-            {
-                "type": "field",
-                "port": "0-65535",
-                "outboundTag": "proxy"
-            }
-            ]
         }
-    }
 
-    return json.dumps(xray_config, indent=4), config_name
-
-
+        return json.dumps(xray_config, indent=4), config_name
+        
+    except Exception as e:
+        return json.dumps({"error": str(e)}), "error_config"
 
 def decode_vless(link):
     link = link.replace("vless://", "")
@@ -179,65 +202,72 @@ def decode_vless(link):
     address, port = split_address_port(address_port)
     query_params = urllib.parse.parse_qs(params)
 
+    def get_param(key, default):
+        return query_params.get(key, [default])[0]
+
     stream_settings = {
-        "network": query_params.get('type', ['tcp'])[0]
+        "network": get_param('type', 'tcp')
     }
 
     if stream_settings["network"] == "tcp":
         stream_settings["tcpSettings"] = {
             "header": {
-                "type": query_params.get('headerType', ['none'])[0],
-                "request": {
-                    "path": query_params.get('path', ["/"]),
-                    "headers": {
-                        "Host": query_params.get('host', [""]),
-                        "User-Agent": query_params.get('ua', [""]),
-                        "Accept-Encoding": query_params.get('accept-encoding', ["gzip, deflate"]),
-                        "Connection": query_params.get('connection', ["keep-alive"]),
-                        "Pragma": query_params.get('pragma', "no-cache")
-                    }
-                }
+                "type": get_param('headerType', 'none')
             }
         }
-
-    elif stream_settings['network'] == "splithttp":
+    elif stream_settings["network"] == "splithttp":
         stream_settings["splithttpSettings"] = {
-            "host": query_params.get('host', [""])[0],
-            "path": query_params.get('path', ["/"])[0],
-            "xmux" :{"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
+            "host": get_param('host', ""),
+            "path": get_param('path', "/"),
+            "xmux": {"maxConcurrency": 4, "cMaxLifetimeMs": 10000}
         }
-
     elif stream_settings["network"] == "ws":
         stream_settings["wsSettings"] = {
-            "path": query_params.get('path', ["/"])[0],
+            "path": get_param('path', "/"),
             "headers": {
-                "Host": query_params.get('host', [""])[0],
-                "User-Agent": query_params.get('ua', [""])[0]
+                "Host": get_param('host', "")
             }
         }
-
-    if query_params.get('security', ['none'])[0] == "tls":
-        stream_settings["security"] = "tls"
-        stream_settings["tlsSettings"] = {
-            "serverName": query_params.get('sni', [""])[0],
-            "fingerprint": query_params.get('fp', [""])[0],
-            "alpn": query_params.get('alpn', ["http/1.1"])
+    elif stream_settings["network"] == "httpupgrade":
+        stream_settings["httpupgradeSettings"] = {
+            "path": get_param('path', "/"),
+            "host": get_param('host', "")
         }
 
     elif stream_settings["network"] == "kcp":
         stream_settings["kcpSettings"] = {
             "header": {
-                "type": query_params.get('headerType', ['none'])[0]
+                "type": get_param('headerType', 'none')
             }
         }
 
-    if query_params.get('security', ['none'])[0] == "tls":
+    elif stream_settings["network"] == "grpc":
+        stream_settings["grpcSettings"] = {
+            "serviceName": get_param('serviceName', ""),
+            "authority": get_param('authority', ""),
+            "health_check_timeout": 20,
+            "idle_timeout": 60,
+            "multiMode": False
+        }
+
+    if get_param('security', 'none') == "reality":
+        stream_settings["security"] = "reality"
+        stream_settings["realitySettings"] = {
+            "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true',
+            "fingerprint": get_param('fp', ""),
+            "publicKey": get_param('pbk', ""),
+            "serverName": get_param('sni', ""),
+            "shortId": get_param('sid', ""),
+            "show": False
+        }
+
+    elif get_param('security', 'none') == "tls":
         stream_settings["security"] = "tls"
         stream_settings["tlsSettings"] = {
-            "serverName": query_params.get('sni', [""])[0],
-            "fingerprint": query_params.get('fp', [""])[0],
-            "alpn": query_params.get('alpn', ["http/1.1"]),
-            "allowInsecure": query_params.get('allowInsecure', ['false'])[0].lower() == 'true'
+            "serverName": get_param('sni', ""),
+            "fingerprint": get_param('fp', ""),
+            "alpn": get_param('alpn', "http/1.1"),
+            "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true'
         }
 
     xray_config = {
@@ -256,48 +286,22 @@ def decode_vless(link):
             "streamSettings": stream_settings
         }],
         "dns": {
-            "hosts": {
-            "dns.google": "8.8.8.8"
-            },
-            "servers": [
-            {
-                "address": "223.5.5.5",
-                "domains": [
-                "wikm.ir"
-                ]
-            },
-            "1.1.1.1",
-            "8.8.8.8",
-            "https://dns.google/dns-query",
-            {
-                "address": "223.5.5.5",
-                "domains": [
-                address
-                ]
-            }
-            ]
+            "servers": ["1.1.1.1", "8.8.8.8"]
         },
         "routing": {
             "domainStrategy": "AsIs",
             "rules": [
-            {
-                "type": "field",
-                "inboundTag": [
-                "api"
-                ],
-                "outboundTag": "api"
-            },
-            {
-                "type": "field",
-                "port": "443",
-                "network": "udp",
-                "outboundTag": "block"
-            },
-            {
-                "type": "field",
-                "port": "0-65535",
-                "outboundTag": "proxy"
-            }
+                {
+                    "type": "field",
+                    "port": "443",
+                    "network": "udp",
+                    "outboundTag": "block"
+                },
+                {
+                    "type": "field",
+                    "port": "0-65535",
+                    "outboundTag": "proxy"
+                }
             ]
         }
     }
@@ -305,6 +309,8 @@ def decode_vless(link):
 
 def convert (config) :
     link = config
+    config_json = None
+    config_name = None
 
     print(link)
 
@@ -327,4 +333,3 @@ def convert (config) :
     # print("Configuration saved to 'xray_config.json'")
 
     return config_json , config_name
-

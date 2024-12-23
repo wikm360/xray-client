@@ -12,11 +12,13 @@ import re
 import sys
 import ctypes
 import threading
+import random
+import string
 from const import *
 
 class XrayBackend:
     def __init__(self):
-        self.os_sys = self.os_det()
+        self.os_sys = OS_SYS
         self.xray_process = None
         self.singbox_process = None
         self.version = APP_VERSION
@@ -24,15 +26,6 @@ class XrayBackend:
         self.log_callback = None
         self.close_event = threading.Event()
         self.useragant = lambda: json.load(open("./setting.json", "r"))["useragent"]
-
-    def os_det(self):
-        system_os = platform.system()
-        if system_os == "Windows":
-            return "win"
-        elif system_os == "Linux":
-            return "linux"
-        elif system_os == "Darwin":
-            return "macos"
 
     def get_system_info(self):
         return {
@@ -63,7 +56,7 @@ class XrayBackend:
 
     def import_subscription(self, name, url):
         if isinstance (url , str)  :
-            if url.startswith("https"):
+            if url.startswith("http"):
                 useragent = str(self.useragant())
                 headers = {"user-agent": useragent}
                 r = requests.get(url=url, headers=headers)
@@ -112,6 +105,8 @@ class XrayBackend:
                     for count, config in enumerate(list_configs):
                         if config.strip():
                             config_json, config_name = convert.convert(config)
+                            if config_json == None :
+                                continue
                             if config_name != "False":
                                 with open(f"./subs/{name}/{count}.json", "w") as f:
                                     f.write(config_json)
@@ -138,7 +133,11 @@ class XrayBackend:
                         data["inbounds"][1]["port"] = 1081
                     except Exception as e :
                         self.log(f"Faild in chenge port Json ...  {e}")
-                    config_name = data["remarks"]
+
+                    def generate_random_word(length=8):
+                        return ''.join(random.choices(string.ascii_letters, k=length))
+                    
+                    config_name = data.get("remarks", generate_random_word())
                     config_json = json.dumps(data , indent=4)
 
                     if config_name != "False":
@@ -157,6 +156,8 @@ class XrayBackend:
 
                 if config.strip():
                     config_json, config_name = convert.convert(config)
+                    if config_json == None :
+                        self.log("Config Not Support")
                     if config_name != "False":
                         with open(f"./subs/{name}/0.json", "w") as f:
                             f.write(config_json)

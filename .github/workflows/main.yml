@@ -31,7 +31,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
 
       - name: Zip executable and folders
         run: |
@@ -85,7 +85,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
 
       - name: Zip executable and folders
         run: |
@@ -138,7 +138,7 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.1-${{ github.run_number }} --file-version v4.1-${{ github.run_number }} --company-name wikm &&
+            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm &&
             ls -lah ./dist/
           "
 
@@ -154,70 +154,86 @@ jobs:
           name: fedora-release
           path: ./release/XC-fedora.zip
         
-
   build-macos:
-      runs-on: macos-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v3
-
-        - name: Install dependencies for ARM64
-          run: |
-            python3 -m pip install --upgrade pip
-            python3 -m pip install pyinstaller pillow
-            python3 -m pip install -r requirements.txt
-            python3 -m pip install pyobjc-core pyobjc-framework-Cocoa
-
-        - name: Build ARM64 executable
-          run: |
-            python3 -m PyInstaller --onefile --name XC_arm64 \
-                --windowed --icon=./GUI-ver/icon.ico \
-                ./GUI-ver/GUI.py --distpath ./dist_arm64
-
-        - name: Install x86_64 dependencies using Rosetta
-          run: |
-            arch -x86_64 /usr/bin/python3 -m pip install --upgrade pip
-            arch -x86_64 /usr/bin/python3 -m pip install pyinstaller pillow
-            arch -x86_64 /usr/bin/python3 -m pip install -r requirements.txt
-            arch -x86_64 /usr/bin/python3 -m pip install pyobjc-core pyobjc-framework-Cocoa
-
-        - name: Build x86_64 executable using Rosetta
-          run: |
-            arch -x86_64 /usr/bin/python3 -m PyInstaller --onefile --name XC_x86_64 \
-                --windowed --icon=./GUI-ver/icon.ico \
-                ./GUI-ver/GUI.py --distpath ./dist_x86_64
-
-        - name: Package ARM64 executable
-          run: |
-            mkdir -p release/ARM64
-            cp -R ./dist_arm64/XC_arm64 release/ARM64/
-            cd release
-            zip -r XC-macos-arm64.zip ARM64
-            cd ..
-
-        - name: Package x86_64 executable
-          run: |
-            mkdir -p release/x86_64
-            cp -R ./dist_x86_64/XC_x86_64 release/x86_64/
-            cd release
-            zip -r XC-macos-x86_64.zip x86_64
-            cd ..
-
-        - name: Upload ARM64 Release
-          uses: actions/upload-artifact@v3
-          with:
-            name: macos-arm64-release
-            path: ./release/XC-macos-arm64.zip
-
-        - name: Upload x86_64 Release
-          uses: actions/upload-artifact@v3
-          with:
-            name: macos-x86_64-release
-            path: ./release/XC-macos-x86_64.zip
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-latest
+            prefix: intel
+          - arch: arm64
+            runner: macos-14
+            prefix: apple-silicon
+    
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: ${{ matrix.arch }}
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade setuptools wheel
+          pip install pyinstaller
+          pip install pillow
+          pip install -r requirements.txt
+          pip install pyobjc-core pyobjc-framework-Cocoa
+          pip install flet
+          
+      - name: Build executable with PyInstaller
+        run: |
+          # Create clean build directory
+          rm -rf build dist
+          
+          # Build with flet
+          flet pack \
+            -i ./GUI-ver/icon.ico \
+            ./GUI-ver/GUI.py \
+            -n XC \
+            --product-name "XC" \
+            --file-description "XC Created By wikm" \
+            --product-version "v4.2-${{ github.run_number }}" \
+            --file-version "v4.2-${{ github.run_number }}" \
+            --company-name "wikm"
+          
+      - name: Verify build
+        run: |
+          if [ ! -d "./dist/XC.app" ]; then
+            echo "Build failed - XC.app not found"
+            exit 1
+          fi
+          
+      - name: Set executable permissions
+        run: |
+          chmod +x ./dist/XC.app/Contents/MacOS/XC
+          xattr -cr ./dist/XC.app
+          
+      - name: Create release package
+        run: |
+          mkdir -p release/XC
+          cp -R ./dist/XC.app release/XC/
+          cp -R ./GUI-ver/subs release/XC/
+          
+          # Create ZIP with architecture identifier
+          cd release
+          zip -r "XC-macos-${{ matrix.prefix }}.zip" XC
+          cd ..
+          
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-${{ matrix.prefix }}-release
+          path: ./release/XC-macos-${{ matrix.prefix }}.zip
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-fedora, build-macos , build-cli]
+    needs: [build-windows, build-ubuntu, build-fedora, build-macos, build-cli]
     runs-on: ubuntu-latest
 
     permissions:
@@ -246,11 +262,17 @@ jobs:
           name: fedora-release
           path: ./release/fedora/
 
-      - name: Download Release Assets
+      - name: Download macOS Intel Release
         uses: actions/download-artifact@v3
         with:
-          name: macos-release
-          path: ./release/macos/
+          name: macos-intel-release
+          path: ./release/macos-intel/
+
+      - name: Download macOS Apple Silicon Release
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-apple-silicon-release
+          path: ./release/macos-apple-silicon/
       
       - name: Download Release Assets
         uses: actions/download-artifact@v3
@@ -263,38 +285,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release create
-          "v4.1-${{ github.run_number }}"
+          "v4.2-${{ github.run_number }}"
           --repo "${{ github.repository }}"
           --notes ""
-          --prerelease
           --generate-notes
-          --title "Release v4.1-${{ github.run_number }}"
+          --title "Release v4.2-${{ github.run_number }}"
 
       - name: Upload artifacts to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >-
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/windows/XC-windows.zip
-          --repo "${{ github.repository }}"
-          
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/ubuntu/XC-ubuntu.zip
-          --repo "${{ github.repository }}"
-          
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/fedora/XC-fedora.zip
-          --repo "${{ github.repository }}"
-          
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/macos/XC-macos.zip
-          --repo "${{ github.repository }}"
-
-          gh release upload
-          "v4.1-${{ github.run_number }}"
-          ./release/cli/XC-CLI.zip
-          --repo "${{ github.repository }}"
+        run: |
+          gh release upload \
+            "v4.2-${{ github.run_number }}" \
+            ./release/windows/XC-windows.zip \
+            ./release/ubuntu/XC-ubuntu.zip \
+            ./release/fedora/XC-fedora.zip \
+            ./release/macos-intel/XC-macos-intel.zip \
+            ./release/macos-apple-silicon/XC-macos-apple-silicon.zip \
+            ./release/cli/XC-CLI.zip \
+            --repo "${{ github.repository }}"
