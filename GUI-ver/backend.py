@@ -14,8 +14,6 @@ import ctypes
 import threading
 import random
 import string
-import wmi
-import pythoncom
 from const import *
 
 class XrayBackend:
@@ -286,6 +284,8 @@ class XrayBackend:
         print("singbox-config write success")
 
     def remove_tun_interface(self):
+        import wmi
+        import pythoncom
         try:
             pythoncom.CoInitialize()
             c = wmi.WMI()
@@ -409,11 +409,12 @@ class XrayBackend:
             return f"Error starting Xray or Sing-box: {str(e)}"
 
     def run_tun(self , config_path) :
-        r = self.remove_tun_interface()
-        if r :
-            self.log("previous interfaces Deleted  ...")
-        else  :
-            self.log("Interfaces Not Found to Delete")
+        if OS_SYS == "win" or OS_SYS == "win7" :
+            r = self.remove_tun_interface()
+            if r :
+                self.log("previous interfaces Deleted  ...")
+            else  :
+                self.log("Interfaces Not Found to Delete")
         singbox_config_path = f'./core/{OS_SYS}/singbox-config.json'
         try:
             with open(singbox_config_path, "r") as file:
