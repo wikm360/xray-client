@@ -167,10 +167,10 @@ class UpdateChecker:
         self.page.update()
 
         progress_bar = ft.ProgressBar(width=300)
-        status_text = ft.Text("Downloading...", size=16)
+        status_text = ft.Text("Loading ...", size=16)
 
         self.download_dialog = ft.AlertDialog(
-            title=ft.Text("Downloading Update", size=20, weight=ft.FontWeight.BOLD),
+            title=ft.Text("installing Core", size=20, weight=ft.FontWeight.BOLD),
             content=ft.Container(
             content=ft.Column([
                 status_text,
