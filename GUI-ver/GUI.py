@@ -754,6 +754,7 @@ class XrayClientUI:
                         loading_dialog.open = False
                         dialog.open = False
                         self.page.update()
+                        self.refresh_profile_tab("all")
 
                 # Run backend import in a separate thread
                 threading.Thread(target=process_import).start()
@@ -767,10 +768,10 @@ class XrayClientUI:
                         letters = string.ascii_letters
                         random_word = ''.join(random.choice(letters) for _ in range(8))
                         self.backend.import_subscription(random_word, data)
-                        self.refresh_profile_tab("all")
                         dialog.open = False
                         self.page.snack_bar = ft.SnackBar(ft.Text("JSON file imported successfully!"), open=True)
                         self.page.update()
+                        self.refresh_profile_tab("all")
 
                 except Exception as ex:
                     self.page.snack_bar = ft.SnackBar(ft.Text(f"Error loading JSON file: {ex}"), open=True)
