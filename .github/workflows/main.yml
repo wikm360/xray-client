@@ -17,7 +17,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -41,7 +41,7 @@ jobs:
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
       - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-release
           path: ./release/XC-windows.zip
@@ -50,7 +50,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Zip executable and folders
         run: |
@@ -62,7 +62,7 @@ jobs:
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-CLI.zip
 
       - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cli-release
           path: ./release/XC-CLI.zip
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -95,7 +95,7 @@ jobs:
           zip -r ./release/XC-ubuntu.zip ./release/
 
       - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu-release
           path: ./release/XC-ubuntu.zip
@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check if Docker is Installed
         run: docker --version || echo "Docker not found. Installing..."
@@ -149,7 +149,7 @@ jobs:
           zip -r ./release/XC-fedora.zip ./release/
 
       - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: fedora-release
           path: ./release/XC-fedora.zip
@@ -167,7 +167,7 @@ jobs:
   #   runs-on: ${{ matrix.runner }}
   #   steps:
   #     - name: Checkout code
-  #       uses: actions/checkout@v3
+  #       uses: actions/checkout@v4
   #     
   #     - name: Setup Python ${{ env.PYTHON_VERSION }}
   #       uses: actions/setup-python@v5
@@ -225,7 +225,7 @@ jobs:
   #         cd ..
   #         
   #     - name: Upload Release Asset
-  #       uses: actions/upload-artifact@v3
+  #       uses: actions/upload-artifact@v4
   #       with:
   #         name: macos-${{ matrix.prefix }}-release
   #         path: ./release/XC-macos-${{ matrix.prefix }}.zip
@@ -244,37 +244,37 @@ jobs:
         run: sudo apt-get install gh
 
       - name: Download Release Assets
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: windows-release
           path: ./release/windows/
 
       - name: Download Release Assets
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ubuntu-release
           path: ./release/ubuntu/
 
       - name: Download Release Assets
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: fedora-release
           path: ./release/fedora/
 
       # - name: Download macOS Intel Release
-      #   uses: actions/download-artifact@v3
+      #   uses: actions/download-artifact@v4
       #   with:
       #     name: macos-intel-release
       #     path: ./release/macos-intel/
 
       # - name: Download macOS Apple Silicon Release
-      #   uses: actions/download-artifact@v3
+      #   uses: actions/download-artifact@v4
       #   with:
       #     name: macos-apple-silicon-release
       #     path: ./release/macos-apple-silicon/
       
       - name: Download Release Assets
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: cli-release
           path: ./release/cli/
