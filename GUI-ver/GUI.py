@@ -30,6 +30,7 @@ class XrayClientUI:
         self.page.window.on_event = handle_window_event
 
         self.selected_config = None
+        self.selected_profile = None  # اضافه کردن متغیر جدید
         self.real_delay_stat = None
         self.ping_all_button = None
         self.close_event = self.backend.close_event
@@ -42,7 +43,11 @@ class XrayClientUI:
             tabs=[ft.Tab(text="Home")],
             expand=1,
         )
-        self.log_buffer = deque(maxlen=100)
+        self.last_update_time = 0
+        self.update_interval = 0.5  # افزایش فاصله به‌روزرسانی به 500ms
+        self.log_buffer = deque(maxlen=30)  # کاهش سایز بافر لاگ
+        self.pending_updates = []  # برای مدیریت به‌روزرسانی‌ها
+        self.update_timer = None
         self.last_logged_message = None
 
         def yes_click(e):
@@ -397,6 +402,7 @@ class XrayClientUI:
                         with open(json_path, "r", encoding="utf-8") as file:
                             data = json.load(file)
                             self.selected_config = str(index) + " " + "-" + " " + data[index]
+                            self.selected_profile = p  # اضافه کردن این خط
                         self.refresh_profile_tab(p)
                     else:
                         print(f"config NotFound : {json_path}")
@@ -572,7 +578,7 @@ class XrayClientUI:
 
 
     def create_config_tile_with_ping(self, config, profile):
-        is_selected = config == self.selected_config
+        is_selected = config == self.selected_config and profile == self.selected_profile
         def ping_selected_config(e):
             if self.ping_type == "Real-delay":
                 self.xray_button.disabled = True
@@ -671,29 +677,49 @@ class XrayClientUI:
                         )
 
         def ping_worker():
+            batch_size = 5  # تعداد پینگ‌های همزمان
+            configs = []
+            
             for control in config_list.controls:
                 if isinstance(control, ft.ListTile):
-                    config_name = control.title.content.value
-                    ping_text = control.trailing.content
-                    config_num = config_name.split("-")[0].strip()
-                    result = self.backend.ping_config(profile, config_num, self.ping_type)
-
+                    configs.append({
+                        'control': control,
+                        'config_num': control.title.content.value.split("-")[0].strip()
+                    })
+            
+            for i in range(0, len(configs), batch_size):
+                batch = configs[i:i + batch_size]
+                threads = []
+                
+                for config in batch:
                     if ping_button.data["status"] == "2":
                         self.xray_button.disabled = False
-                        break
+                        return
 
-                    ping_text.value = f"Ping: {result}"
-                    self.page.update()
+                    def ping_config(conf):
+                        result = self.backend.ping_config(profile, conf['config_num'], self.ping_type)
+                        conf['control'].trailing.content.value = f"Ping: {result}"
+                    
+                    t = threading.Thread(target=ping_config, args=(config,))
+                    t.start()
+                    threads.append(t)
+                
+                for t in threads:
+                    t.join()
+                
+                self.schedule_update()
+                time.sleep(0.1)  # کاهش فشار بر سیستم
 
             ping_button.content.controls[1].value = "Ping All"
             ping_button.data["status"] = "0"
             self.xray_button.disabled = False
-            self.page.update()
+            self.schedule_update()
 
         threading.Thread(target=ping_worker, daemon=True).start()
 
     def select_config(self, config, profile):
         self.selected_config = config
+        self.selected_profile = profile  # ذخیره نام پروفایل
         try:
             config_index = int(config.split("-")[0])
             with open(f"./core/{self.backend.os_sys}/select.txt", "w") as f:
@@ -704,13 +730,14 @@ class XrayClientUI:
         self.refresh_profile_tab(profile)
         if self.backend.xray_process is None:
             pass
-        else :
+        else:
             self.toggle_xray(e="default")
             self.toggle_xray(e="default")
 
     def refresh_profile_tab(self , profile):
         if profile == "all" :
             self.selected_config = None
+            self.selected_profile = None  # ریست کردن پروفایل انتخاب شده
             self.tabs.tabs = [tab for tab in self.tabs.tabs if tab.text == "Home"]
 
             for profile in self.backend.get_profiles():
@@ -723,7 +750,8 @@ class XrayClientUI:
                     config_list = tab.content.controls[1]
                     for control in config_list.controls:
                         config_name = control.title.content.value
-                        if config_name == self.selected_config:
+                        # تغییر شرط رنگ کردن با در نظر گرفتن نام پروفایل
+                        if config_name == self.selected_config and profile == self.selected_profile:
                             control.title.content.bgcolor = ft.colors.LIGHT_BLUE
                         else:
                             control.title.content.bgcolor = ft.colors.TRANSPARENT
@@ -1001,17 +1029,45 @@ class XrayClientUI:
         print(f"Ping type changed to: {self.ping_type}")
 
     def log(self, message):
-        if message is not None:
-            self.log_buffer.append(str(message))
-        else:
-            self.log_buffer.append("None")
-        self.log_view.value = "\n".join(filter(None, self.log_buffer))
-        self.page.update()
+        if message is None or not isinstance(message, str):
+            return
+
+        current_time = time.time()
+        if current_time - self.last_update_time < self.update_interval:
+            return
 
         if message != self.last_logged_message:
-            logging.debug(message)
+            self.log_buffer.append(message)
+            
+            # فقط 500 کاراکتر آخر نمایش داده شود
+            log_text = "\n".join(filter(None, self.log_buffer))
+            if len(log_text) > 500:
+                log_text = log_text[-500:]
+            
+            self.log_view.value = log_text
+            
+            self.pending_updates.append("log")
+            self.schedule_update()
+            
+            self.last_update_time = current_time
             self.last_logged_message = message
-        
+            
+            if self.debug_mod == "on":
+                logging.debug(message)
+
+    def batch_update(self):
+        """انجام به‌روزرسانی‌های تجمیع شده"""
+        if self.pending_updates and not self.page.window_minimized:
+            self.page.update()
+            self.pending_updates.clear()
+        self.update_timer = None
+
+    def schedule_update(self):
+        """زمان‌بندی به‌روزرسانی با تاخیر"""
+        if not self.update_timer:
+            self.update_timer = threading.Timer(0.1, self.batch_update)
+            self.update_timer.start()
+
     def update_subscription(self, profile):
         loading_dialog = ft.AlertDialog(
             title=ft.Text("Updating..."),
@@ -1074,6 +1130,13 @@ class XrayClientUI:
                 self.page.window_close()
                 break
             time.sleep(0.1)
+
+    def cleanup(self):
+        """پاکسازی منابع هنگام بستن برنامه"""
+        if self.update_timer:
+            self.update_timer.cancel()
+        self.log_buffer.clear()
+        self.pending_updates.clear()
 
 def main(page: ft.Page):
     XrayClientUI(page)

@@ -154,86 +154,85 @@ jobs:
           name: fedora-release
           path: ./release/XC-fedora.zip
         
-  build-macos:
-    strategy:
-      matrix:
-        include:
-          - arch: x64
-            runner: macos-latest
-            prefix: intel
-          - arch: arm64
-            runner: macos-14
-            prefix: apple-silicon
-    
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Setup Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.arch }}
-          
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade setuptools wheel
-          pip install pyinstaller
-          pip install pillow
-          pip install -r requirements.txt
-          pip install pyobjc-core pyobjc-framework-Cocoa
-          pip install flet
-          
-      - name: Build executable with PyInstaller
-        run: |
-          # Create clean build directory
-          rm -rf build dist
-          
-          # Build with flet
-          flet pack \
-            -i ./GUI-ver/icon.ico \
-            ./GUI-ver/GUI.py \
-            -n XC \
-            --product-name "XC" \
-            --file-description "XC Created By wikm" \
-            --product-version "v4.2-${{ github.run_number }}" \
-            --file-version "v4.2-${{ github.run_number }}" \
-            --company-name "wikm"
-          
-      - name: Verify build
-        run: |
-          if [ ! -d "./dist/XC.app" ]; then
-            echo "Build failed - XC.app not found"
-            exit 1
-          fi
-          
-      - name: Set executable permissions
-        run: |
-          chmod +x ./dist/XC.app/Contents/MacOS/XC
-          xattr -cr ./dist/XC.app
-          
-      - name: Create release package
-        run: |
-          mkdir -p release/XC
-          cp -R ./dist/XC.app release/XC/
-          cp -R ./GUI-ver/subs release/XC/
-          
-          # Create ZIP with architecture identifier
-          cd release
-          zip -r "XC-macos-${{ matrix.prefix }}.zip" XC
-          cd ..
-          
-      - name: Upload Release Asset
-        uses: actions/upload-artifact@v3
-        with:
-          name: macos-${{ matrix.prefix }}-release
-          path: ./release/XC-macos-${{ matrix.prefix }}.zip
+  # build-macos:
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - arch: x64
+  #           runner: macos-latest
+  #           prefix: intel
+  #         - arch: arm64
+  #           runner: macos-14
+  #           prefix: apple-silicon
+  #   runs-on: ${{ matrix.runner }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #     
+  #     - name: Setup Python ${{ env.PYTHON_VERSION }}
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  #         architecture: ${{ matrix.arch }}
+  #         
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install --upgrade setuptools wheel
+  #         pip install pyinstaller
+  #         pip install pillow
+  #         pip install -r requirements.txt
+  #         pip install pyobjc-core pyobjc-framework-Cocoa
+  #         pip install flet
+  #         
+  #     - name: Build executable with PyInstaller
+  #       run: |
+  #         # Create clean build directory
+  #         rm -rf build dist
+  #         
+  #         # Build with flet
+  #         flet pack \
+  #           -i ./GUI-ver/icon.ico \
+  #           ./GUI-ver/GUI.py \
+  #           -n XC \
+  #           --product-name "XC" \
+  #           --file-description "XC Created By wikm" \
+  #           --product-version "v4.2-${{ github.run_number }}" \
+  #           --file-version "v4.2-${{ github.run_number }}" \
+  #           --company-name "wikm"
+  #         
+  #     - name: Verify build
+  #       run: |
+  #         if [ ! -d "./dist/XC.app" ]; then
+  #           echo "Build failed - XC.app not found"
+  #           exit 1
+  #         fi
+  #         
+  #     - name: Set executable permissions
+  #       run: |
+  #         chmod +x ./dist/XC.app/Contents/MacOS/XC
+  #         xattr -cr ./dist/XC.app
+  #         
+  #     - name: Create release package
+  #       run: |
+  #         mkdir -p release/XC
+  #         cp -R ./dist/XC.app release/XC/
+  #         cp -R ./GUI-ver/subs release/XC/
+  #         
+  #         # Create ZIP with architecture identifier
+  #         cd release
+  #         zip -r "XC-macos-${{ matrix.prefix }}.zip" XC
+  #         cd ..
+  #         
+  #     - name: Upload Release Asset
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: macos-${{ matrix.prefix }}-release
+  #         path: ./release/XC-macos-${{ matrix.prefix }}.zip
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-fedora, build-macos, build-cli]
+    needs: [build-windows, build-ubuntu, build-fedora, build-cli]
     runs-on: ubuntu-latest
 
     permissions:
@@ -262,17 +261,17 @@ jobs:
           name: fedora-release
           path: ./release/fedora/
 
-      - name: Download macOS Intel Release
-        uses: actions/download-artifact@v3
-        with:
-          name: macos-intel-release
-          path: ./release/macos-intel/
+      # - name: Download macOS Intel Release
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: macos-intel-release
+      #     path: ./release/macos-intel/
 
-      - name: Download macOS Apple Silicon Release
-        uses: actions/download-artifact@v3
-        with:
-          name: macos-apple-silicon-release
-          path: ./release/macos-apple-silicon/
+      # - name: Download macOS Apple Silicon Release
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: macos-apple-silicon-release
+      #     path: ./release/macos-apple-silicon/
       
       - name: Download Release Assets
         uses: actions/download-artifact@v3
@@ -300,7 +299,5 @@ jobs:
             ./release/windows/XC-windows.zip \
             ./release/ubuntu/XC-ubuntu.zip \
             ./release/fedora/XC-fedora.zip \
-            ./release/macos-intel/XC-macos-intel.zip \
-            ./release/macos-apple-silicon/XC-macos-apple-silicon.zip \
             ./release/cli/XC-CLI.zip \
             --repo "${{ github.repository }}"

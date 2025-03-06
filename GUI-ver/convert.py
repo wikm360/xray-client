@@ -233,6 +233,53 @@ def decode_vless(link):
             "path": get_param('path', "/"),
             "host": get_param('host', "")
         }
+    elif stream_settings["network"] == "xhttp":  # Added support for xhttp type
+        # Parse the "extra" field from URL-encoded JSON
+        extra_settings = {}
+        if 'extra' in query_params:
+            try:
+                extra_json = urllib.parse.unquote(query_params['extra'][0])
+                extra_settings = json.loads(extra_json)
+            except Exception as e:
+                print(f"Error parsing extra parameter: {e}")
+        
+        # Create xhttpSettings with the structure you requested
+        xhttp_settings = {
+            "mode": get_param('mode', "packet-up"),
+            "path": get_param('path', "/"),
+            "host": get_param('host', "")
+        }
+        
+        # Create the extra field structure
+        extra_field = {}
+        
+        # Add the specific fields from extra_settings to extra_field
+        if extra_settings:
+            # Include scMaxEachPostBytes if it exists
+            if 'scMaxEachPostBytes' in extra_settings:
+                extra_field["scMaxEachPostBytes"] = extra_settings['scMaxEachPostBytes']
+            
+            # Include scMinPostsIntervalMs if it exists
+            if 'scMinPostsIntervalMs' in extra_settings:
+                extra_field["scMinPostsIntervalMs"] = extra_settings['scMinPostsIntervalMs']
+            
+            # Include xPaddingBytes if it exists
+            if 'xPaddingBytes' in extra_settings:
+                extra_field["xPaddingBytes"] = extra_settings['xPaddingBytes']
+            
+            # Include noGRPCHeader if it exists
+            if 'noGRPCHeader' in extra_settings:
+                extra_field["noGRPCHeader"] = extra_settings['noGRPCHeader']
+            
+            # Include xmux if it exists
+            if 'xmux' in extra_settings:
+                extra_field["xmux"] = extra_settings['xmux']
+        
+        # Add the extra field to xhttpSettings if it's not empty
+        if extra_field:
+            xhttp_settings["extra"] = extra_field
+            
+        stream_settings["xhttpSettings"] = xhttp_settings
 
     elif stream_settings["network"] == "kcp":
         stream_settings["kcpSettings"] = {
@@ -266,8 +313,8 @@ def decode_vless(link):
         stream_settings["tlsSettings"] = {
             "serverName": get_param('sni', ""),
             "fingerprint": get_param('fp', ""),
-            "alpn": get_param('alpn', "http/1.1"),
-            "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true'
+            "alpn": get_param('alpn', "http/1.1").split(','),  # Parse comma-separated ALPN values
+            "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true' or get_param('allowInsecure', '0') == '1'
         }
 
     xray_config = {
@@ -283,7 +330,8 @@ def decode_vless(link):
                     "users": [{"id": uuid, "encryption": "none"}]
                 }]
             },
-            "streamSettings": stream_settings
+            "streamSettings": stream_settings,
+            "tag": "proxy"
         }],
         "dns": {
             "servers": ["1.1.1.1", "8.8.8.8"]
@@ -307,7 +355,7 @@ def decode_vless(link):
     }
     return json.dumps(xray_config, indent=4)
 
-def convert (config) :
+def convert(config):
     link = config
     config_json = None
     config_name = None
@@ -315,15 +363,14 @@ def convert (config) :
     print(link)
 
     if link.startswith("vmess://"):
-        config_json , config_name = decode_vmess(link)
+        config_json, config_name = decode_vmess(link)
     elif link.startswith("vless://"):
         config_json = decode_vless(link)
-        config_name = link.split('#')[-1]
-    elif link == "False" :  
+        config_name = link.split('#')[-1] if '#' in link else "Unnamed Config"
+    elif link == "False":  
         config_json = "False"
         config_name = "False"
         
-
     print("Generated Xray Configuration:")
     print(config_json)
 
@@ -332,4 +379,4 @@ def convert (config) :
 
     # print("Configuration saved to 'xray_config.json'")
 
-    return config_json , config_name
+    return config_json, config_name
