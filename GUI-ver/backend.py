@@ -243,10 +243,7 @@ class XrayBackend:
                 return f"Error: {str(e)}"
 
         elif ping_type == "Real-delay":
-            if self.xray_process:
-                self.stop_xray()
-
-            self.run(config_path , "ping")
+            self.run_xray(config_path)
             time.sleep(1)
             try:
                 s_time = time.time()

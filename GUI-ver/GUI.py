@@ -9,6 +9,7 @@ import json
 import logging
 import string
 import random
+from const  import PROXY_IP , PROXY_PORT
 
 class XrayClientUI:
     def __init__(self, page: ft.Page):
@@ -655,31 +656,29 @@ class XrayClientUI:
     def ping_all_configs(self, profile, config_list, ping_button):
         if self.ping_type == "Real-delay":
             self.xray_button.disabled = True
-            self.xray_button.content = ft.Row (
-                            [
-                                ft.Icon(ft.icons.PLAY_ARROW),
-                                ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            spacing=8,
-                        )
+            self.xray_button.content = ft.Row(
+                [
+                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            )
             self.xray_button.style = ft.ButtonStyle(
-                            padding=ft.padding.symmetric(horizontal=30, vertical=20),
-                            shape=ft.RoundedRectangleBorder(radius=10),
-                            color={
-                                ft.ControlState.DEFAULT: ft.colors.WHITE,
-                                ft.ControlState.HOVERED: ft.colors.WHITE,
-                            },
-                            bgcolor={
-                                ft.ControlState.DEFAULT: ft.colors.GREEN,
-                                ft.ControlState.HOVERED: ft.colors.GREEN_700,
-                            },
-                        )
+                padding=ft.padding.symmetric(horizontal=30, vertical=20),
+                shape=ft.RoundedRectangleBorder(radius=10),
+                color={
+                    ft.ControlState.DEFAULT: ft.colors.WHITE,
+                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                },
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.colors.GREEN,
+                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                },
+            )
 
         def ping_worker():
-            batch_size = 5  # تعداد پینگ‌های همزمان
             configs = []
-            
             for control in config_list.controls:
                 if isinstance(control, ft.ListTile):
                     configs.append({
@@ -687,32 +686,31 @@ class XrayClientUI:
                         'config_num': control.title.content.value.split("-")[0].strip()
                     })
             
-            for i in range(0, len(configs), batch_size):
-                batch = configs[i:i + batch_size]
-                threads = []
-                
-                for config in batch:
-                    if ping_button.data["status"] == "2":
-                        self.xray_button.disabled = False
-                        return
+            for config in configs:
+                if ping_button.data["status"] == "2":
+                    self.xray_button.disabled = False
+                    if self.backend.xray_process:
+                        self.backend.stop_xray()
+                    return
 
-                    def ping_config(conf):
-                        result = self.backend.ping_config(profile, conf['config_num'], self.ping_type)
-                        conf['control'].trailing.content.value = f"Ping: {result}"
-                    
-                    t = threading.Thread(target=ping_config, args=(config,))
-                    t.start()
-                    threads.append(t)
+                result = self.backend.ping_config(profile, config['config_num'], self.ping_type)
+                config['control'].trailing.content.value = f"Ping: {result}"
                 
-                for t in threads:
-                    t.join()
+                # اطمینان از توقف xray بعد از هر پینگ
+                if self.ping_type == "Real-delay" and self.backend.xray_process:
+                    self.backend.stop_xray()
+                    time.sleep(0.1)  # اضافه کردن تاخیر کوتاه
                 
                 self.schedule_update()
-                time.sleep(0.1)  # کاهش فشار بر سیستم
 
             ping_button.content.controls[1].value = "Ping All"
             ping_button.data["status"] = "0"
             self.xray_button.disabled = False
+            
+            # چک نهایی برای اطمینان از توقف xray
+            if self.ping_type == "Real-delay" and self.backend.xray_process:
+                self.backend.stop_xray()
+            
             self.schedule_update()
 
         threading.Thread(target=ping_worker, daemon=True).start()
@@ -896,7 +894,7 @@ class XrayClientUI:
             if os.path.exists(config_path):
                 with open(config_path, "r") as f:
                     selected_config = f.read().strip()
-                if not selected_config :
+                if not selected_config:
                     self.log("first select one config...")
                     return
                 if self.run_mode == "tun":
@@ -908,11 +906,17 @@ class XrayClientUI:
                 else:
                     message = self.backend.run(selected_config, "proxy")
                     self.handle_xray_start(message)
+                    # اضافه کردن: روشن کردن پروکسی سیستم در حالت پروکسی
+                    if self.run_mode == "proxy":
+                        if self.backend.os_sys == "win":
+                            self.backend.set_system_proxy(PROXY_IP, PROXY_PORT)
+                        elif self.backend.os_sys == "linux":
+                            self.backend.set_gnome_proxy(PROXY_IP, PROXY_PORT)
             else:
                 self.log("No config selected. Please select a config first.")
         else:
             message = self.backend.stop_xray()
-            self.xray_button.content = ft.Row (
+            self.xray_button.content = ft.Row(
                 [
                     ft.Icon(ft.icons.PLAY_ARROW),
                     ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
@@ -933,6 +937,12 @@ class XrayClientUI:
                 },
             )
             self.log(message)
+            # اضافه کردن: خاموش کردن پروکسی سیستم در حالت پروکسی
+            if self.run_mode == "proxy":
+                if self.backend.os_sys == "win":
+                    self.backend.disable_system_proxy()
+                elif self.backend.os_sys == "linux":
+                    self.backend.disable_gnome_proxy()
         self.page.update()
 
     def handle_xray_start(self, message):
