@@ -100,6 +100,39 @@ jobs:
           name: ubuntu-release
           path: ./release/XC-ubuntu.zip
 
+  build-ubuntu20:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build executable with flet
+        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp -r ./dist/XC ./release/
+          cp -r ./GUI-ver/subs ./release/
+          zip -r ./release/XC-ubuntu20.zip ./release/
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu20-release
+          path: ./release/XC-ubuntu20.zip
+
   build-fedora:
     runs-on: ubuntu-latest
     steps:
@@ -232,7 +265,7 @@ jobs:
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-fedora, build-cli]  # Removed build-macos from needs
+    needs: [build-windows, build-ubuntu, build-ubuntu20, build-fedora, build-cli]  # Added ubuntu20
     runs-on: ubuntu-latest
 
     permissions:
@@ -254,6 +287,12 @@ jobs:
         with:
           name: ubuntu-release
           path: ./release/ubuntu/
+
+      - name: Download Release Assets
+        uses: actions/download-artifact@v4
+        with:
+          name: ubuntu20-release
+          path: ./release/ubuntu20/
 
       - name: Download Release Assets
         uses: actions/download-artifact@v4
@@ -287,6 +326,7 @@ jobs:
             "v4.2-${{ github.run_number }}" \
             ./release/windows/XC-windows.zip \
             ./release/ubuntu/XC-ubuntu.zip \
+            ./release/ubuntu20/XC-ubuntu20.zip \
             ./release/fedora/XC-fedora.zip \
             ./release/cli/XC-CLI.zip \
             --repo "${{ github.repository }}"
