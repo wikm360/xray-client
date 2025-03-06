@@ -15,6 +15,7 @@ import threading
 import random
 import string
 from const import *
+from collections import deque
 
 class XrayBackend:
     def __init__(self):
@@ -26,6 +27,8 @@ class XrayBackend:
         self.log_callback = None
         self.close_event = threading.Event()
         self.useragant = lambda: json.load(open("./setting.json", "r"))["useragent"]
+        self._process_output_buffer = deque(maxlen=100)
+        self._output_lock = threading.Lock()
 
     def get_system_info(self):
         return {
@@ -195,6 +198,27 @@ class XrayBackend:
             # self.log(f"Previous {profile} sub deleted")
 
     def ping_config(self, profile, config_num, ping_type):
+        try:
+            # کش کردن نتایج پینگ برای 30 ثانیه
+            cache_key = f"{profile}_{config_num}_{ping_type}"
+            current_time = time.time()
+            
+            if hasattr(self, '_ping_cache'):
+                if cache_key in self._ping_cache:
+                    result, timestamp = self._ping_cache[cache_key]
+                    if current_time - timestamp < 30:
+                        return result
+            else:
+                self._ping_cache = {}
+
+            result = self._do_ping(profile, config_num, ping_type)
+            self._ping_cache[cache_key] = (result, current_time)
+            return result
+        
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def _do_ping(self, profile, config_num, ping_type):
         config_path = f"./subs/{profile}/{config_num}.json"
         
         if ping_type == "Tcping":
@@ -467,12 +491,17 @@ class XrayBackend:
             return f"Error starting Xray or Sing-box: {str(e)}"
 
     def read_process_output(self, process, name):
-        for line in process.stdout:
-            if line:
-                self.log(f"{name}: {line.strip()}")
-        for line in process.stderr:
-            if line:
-                self.log(f"{name} Error: {line.strip()}")
+        def _read_stream(stream):
+            for line in iter(stream.readline, ''):
+                with self._output_lock:
+                    if len(line.strip()) > 0:  # فقط خطوط غیر خالی
+                        self._process_output_buffer.append(f"{name}: {line.strip()}")
+                        if self.log_callback:
+                            self.log_callback(self._process_output_buffer[-1])
+                time.sleep(0.01)  # کاهش مصرف CPU
+
+        threading.Thread(target=_read_stream, args=(process.stdout,), daemon=True).start()
+        threading.Thread(target=_read_stream, args=(process.stderr,), daemon=True).start()
 
     def stop_xray(self):
         if OS_SYS == "win" :
