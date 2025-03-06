@@ -218,6 +218,38 @@ class XrayBackend:
         except Exception as e:
             return f"Error: {str(e)}"
 
+    def _change_config_port(self, config_path, new_port):
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Store original ports
+            original_ports = []
+            for inbound in config['inbounds']:
+                original_ports.append(inbound['port'])
+                inbound['port'] = new_port
+            
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+            
+            return original_ports
+        except Exception as e:
+            self.log(f"Error changing port: {str(e)}")
+            return None
+
+    def _restore_config_ports(self, config_path, original_ports):
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            for i, inbound in enumerate(config['inbounds']):
+                inbound['port'] = original_ports[i]
+            
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            self.log(f"Error restoring ports: {str(e)}")
+
     def _do_ping(self, profile, config_num, ping_type):
         config_path = f"./subs/{profile}/{config_num}.json"
         
@@ -243,25 +275,37 @@ class XrayBackend:
                 return f"Error: {str(e)}"
 
         elif ping_type == "Real-delay":
-            self.run_xray(config_path)
-            time.sleep(1)
+            # Generate random port
+            random_port = random.randint(10000, 65000)
+            original_ports = self._change_config_port(config_path, random_port)
+            
+            if original_ports is None:
+                return "Error: Could not change ports"
+
             try:
+                self.run_xray(config_path)
+                time.sleep(1)
+                
                 s_time = time.time()
-                try :
-                    response = requests.get('http://gstatic.com/generate_204', proxies={"http": "http://127.0.0.1:1080"} , timeout=2)
+                try:
+                    response = requests.get('http://gstatic.com/generate_204', 
+                                         proxies={"http": f"http://127.0.0.1:{random_port}"}, 
+                                         timeout=2)
                 except requests.exceptions.Timeout:
                     return "Timeout"
                 e_time = time.time()
+                
                 if 200 <= response.status_code < 300:
                     delay_ms = (e_time - s_time) * 1000
                     return f"{delay_ms:.2f} ms"
                 else:
                     return "Timeout"
-            except :
+            except:
                 self.stop_xray()
-                return f"Timeout"
+                return "Timeout"
             finally:
                 self.stop_xray()
+                self._restore_config_ports(config_path, original_ports)
 
     def write_sing_box_config (self , dest) :
         def is_ip(address):

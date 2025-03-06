@@ -655,6 +655,7 @@ class XrayClientUI:
 
     def ping_all_configs(self, profile, config_list, ping_button):
         if self.ping_type == "Real-delay":
+            self.backend.stop_xray()
             self.xray_button.disabled = True
             self.xray_button.content = ft.Row(
                 [
@@ -678,40 +679,72 @@ class XrayClientUI:
             )
 
         def ping_worker():
-            configs = []
-            for control in config_list.controls:
-                if isinstance(control, ft.ListTile):
-                    configs.append({
-                        'control': control,
-                        'config_num': control.title.content.value.split("-")[0].strip()
-                    })
-            
-            for config in configs:
-                if ping_button.data["status"] == "2":
-                    self.xray_button.disabled = False
-                    if self.backend.xray_process:
-                        self.backend.stop_xray()
-                    return
+            try:
+                configs = []
+                for control in config_list.controls:
+                    if isinstance(control, ft.ListTile):
+                        configs.append({
+                            'control': control,
+                            'config_num': control.title.content.value.split("-")[0].strip()
+                        })
 
-                result = self.backend.ping_config(profile, config['config_num'], self.ping_type)
-                config['control'].trailing.content.value = f"Ping: {result}"
+                def process_config_batch(batch):
+                    threads = []
+                    results = {}
+
+                    def ping_single_config(config):
+                        if ping_button.data["status"] == "2":
+                            return
+                        
+                        result = self.backend.ping_config(profile, config['config_num'], self.ping_type)
+                        with threading.Lock():
+                            results[config['control']] = result
+                            # به‌روزرسانی UI برای هر نتیجه پینگ
+                            # def update_result():
+                            config['control'].trailing.content.value = f"Ping: {result}"
+                            self.page.update()
+                            # self.page.run_on_ui_thread(update_result)
+
+                    for config in batch:
+                        if ping_button.data["status"] == "2":
+                            break
+                        
+                        thread = threading.Thread(
+                            target=ping_single_config,
+                            args=(config,),
+                            daemon=True
+                        )
+                        threads.append(thread)
+                        thread.start()
+
+                    # Wait for all threads in batch to complete
+                    for thread in threads:
+                        thread.join(timeout=5)  # 5 second timeout
+
+                # Process configs in batches of 5
+                batch_size = 5
+                for i in range(0, len(configs), batch_size):
+                    if ping_button.data["status"] == "2":
+                        break
+                    
+                    batch = configs[i:i + batch_size]
+                    process_config_batch(batch)
+                    time.sleep(0.1)  # Small delay between batches
+
+            finally:
+                # Ensure these operations run even if there's an error
+                # def update_ui():
+                ping_button.content.controls[1].value = "Ping All"
+                ping_button.data["status"] = "0"
+                self.xray_button.disabled = False
                 
-                # اطمینان از توقف xray بعد از هر پینگ
                 if self.ping_type == "Real-delay" and self.backend.xray_process:
                     self.backend.stop_xray()
-                    time.sleep(0.1)  # اضافه کردن تاخیر کوتاه
                 
-                self.schedule_update()
+                self.page.update()
+                    # self.schedule_update()
 
-            ping_button.content.controls[1].value = "Ping All"
-            ping_button.data["status"] = "0"
-            self.xray_button.disabled = False
-            
-            # چک نهایی برای اطمینان از توقف xray
-            if self.ping_type == "Real-delay" and self.backend.xray_process:
-                self.backend.stop_xray()
-            
-            self.schedule_update()
+                # self.page.run_on_ui_thread(update_ui)
 
         threading.Thread(target=ping_worker, daemon=True).start()
 
