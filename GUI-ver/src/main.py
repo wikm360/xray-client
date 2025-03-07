@@ -167,12 +167,12 @@ class XrayClientUI:
         system_info = self.backend.get_system_info()
 
         settings_icon = ft.IconButton(
-            icon=ft.icons.SETTINGS,
+            icon=ft.Icons.SETTINGS,
             icon_size=28,
             on_click=self.show_settings_dialog,
             style=ft.ButtonStyle(
-                color=ft.colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.colors.BLACK,
-                bgcolor=ft.colors.TRANSPARENT,
+                color=ft.Colors.WHITE if self.page.theme_mode == ft.ThemeMode.DARK else ft.Colors.BLACK,
+                bgcolor=ft.Colors.TRANSPARENT,
             ),
             tooltip="Settings",
         )
@@ -180,7 +180,7 @@ class XrayClientUI:
         import_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.CLOUD_DOWNLOAD, size=20),
+                    ft.Icon(ft.Icons.CLOUD_DOWNLOAD, size=20),
                     ft.Text("Import Subscription", size=16),
                 ],
                 spacing=8,
@@ -189,12 +189,12 @@ class XrayClientUI:
                 padding=ft.padding.all(15),
                 shape=ft.RoundedRectangleBorder(radius=8),
                 color={
-                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.colors.BLUE,
-                    ft.ControlState.HOVERED: ft.colors.BLUE_700,
+                    ft.ControlState.DEFAULT: ft.Colors.BLUE,
+                    ft.ControlState.HOVERED: ft.Colors.BLUE_700,
                 },
             ),
             on_click=self.show_import_dialog,
@@ -209,7 +209,7 @@ class XrayClientUI:
             content=ft.Container(
                 content=ft.Column([
                     ft.Row([
-                        ft.Icon(ft.icons.BOLT, size=30, color=ft.colors.BLUE),
+                        ft.Icon(ft.Icons.BOLT, size=30, color=ft.Colors.BLUE),
                         ft.Text("XC (Xray-Client)", size=28, weight=ft.FontWeight.BOLD),
                     ], alignment=ft.MainAxisAlignment.CENTER),
                     ft.Container(height=10),
@@ -244,7 +244,7 @@ class XrayClientUI:
         self.xray_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Icon(ft.Icons.PLAY_ARROW),
                     ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
@@ -254,12 +254,12 @@ class XrayClientUI:
                 padding=ft.padding.symmetric(horizontal=30, vertical=20),
                 shape=ft.RoundedRectangleBorder(radius=10),
                 color={
-                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.colors.GREEN,
-                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                    ft.ControlState.DEFAULT: ft.Colors.GREEN,
+                    ft.ControlState.HOVERED: ft.Colors.GREEN_700,
                 },
             ),
             on_click=self.toggle_xray,
@@ -268,8 +268,8 @@ class XrayClientUI:
         self.mode_switch = ft.Switch(
             label="Proxy",
             value=True,
-            active_color=ft.colors.GREY_400,
-            inactive_thumb_color=ft.colors.BLUE,
+            active_color=ft.Colors.GREY_400,
+            inactive_thumb_color=ft.Colors.BLUE,
             on_change=self.toggle_mode,
         )
 
@@ -279,7 +279,7 @@ class XrayClientUI:
             expand=True,
             min_lines=12,
             max_lines=20,
-            border_color=ft.colors.BLUE_200,
+            border_color=ft.Colors.BLUE_200,
             border_radius=8,
             text_size=14,
         )
@@ -294,7 +294,7 @@ class XrayClientUI:
             ], alignment=ft.MainAxisAlignment.CENTER),
             ft.Container(height=5),
             ft.Row([
-                ft.Icon(ft.icons.TERMINAL, color=ft.colors.BLUE),
+                ft.Icon(ft.Icons.TERMINAL, color=ft.Colors.BLUE),
                 ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
             ], alignment=ft.MainAxisAlignment.CENTER),
             self.log_view
@@ -320,7 +320,7 @@ class XrayClientUI:
         update_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.REFRESH, size=20),
+                    ft.Icon(ft.Icons.REFRESH, size=20),
                     ft.Text("Update", size=16),
                 ],
                 spacing=8,
@@ -335,7 +335,7 @@ class XrayClientUI:
         delete_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.DELETE, size=20),
+                    ft.Icon(ft.Icons.DELETE, size=20),
                     ft.Text("Delete", size=16),
                 ],
                 spacing=8,
@@ -350,7 +350,7 @@ class XrayClientUI:
         edit_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.EDIT, size=20),
+                    ft.Icon(ft.Icons.EDIT, size=20),
                     ft.Text("Edit", size=16),
                 ],
                 spacing=8,
@@ -366,7 +366,7 @@ class XrayClientUI:
         ping_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.NETWORK_CHECK, size=20),
+                    ft.Icon(ft.Icons.NETWORK_CHECK, size=20),
                     ft.Text("Ping All", size=16),
                 ],
                 spacing=8,
@@ -379,8 +379,23 @@ class XrayClientUI:
             on_click=lambda e: self.ping_button(e.control, config_list)
         )
 
+        sort_button = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.Icons.SORT, size=20),
+                    ft.Text("Sort by Ping", size=16),
+                ],
+                spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            ),
+            on_click=lambda _: self.sort_configs_by_ping(config_list)
+        )
+
         tab_content = ft.Column([
-            ft.Row([update_button, delete_button, edit_button, ping_button],
+            ft.Row([update_button, delete_button, edit_button, ping_button, sort_button],
                 alignment=ft.MainAxisAlignment.START,
                 spacing=10), 
             config_list
@@ -510,7 +525,7 @@ class XrayClientUI:
         github_button = ft.ElevatedButton(
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.PUBLIC, size=20),
+                    ft.Icon(ft.Icons.PUBLIC, size=20),
                     ft.Text("GitHub", size=16),
                 ],
                 spacing=8,
@@ -519,10 +534,10 @@ class XrayClientUI:
             style=ft.ButtonStyle(
                 padding=ft.padding.symmetric(horizontal=20, vertical=10),
                 shape=ft.RoundedRectangleBorder(radius=10),
-                color=ft.colors.WHITE,
+                color=ft.Colors.WHITE,
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.colors.BLUE,
-                    ft.ControlState.HOVERED: ft.colors.BLUE_700,
+                    ft.ControlState.DEFAULT: ft.Colors.BLUE,
+                    ft.ControlState.HOVERED: ft.Colors.BLUE_700,
                 },
             ),
             tooltip="Visit GitHub Repository",
@@ -585,7 +600,7 @@ class XrayClientUI:
                 self.xray_button.disabled = True
                 self.xray_button.content = ft.Row (
                                 [
-                                    ft.Icon(ft.icons.PLAY_ARROW),
+                                    ft.Icon(ft.Icons.PLAY_ARROW),
                                     ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER,
@@ -595,12 +610,12 @@ class XrayClientUI:
                                 padding=ft.padding.symmetric(horizontal=30, vertical=20),
                                 shape=ft.RoundedRectangleBorder(radius=10),
                                 color={
-                                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                                 },
                                 bgcolor={
-                                    ft.ControlState.DEFAULT: ft.colors.GREEN,
-                                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                                    ft.ControlState.DEFAULT: ft.Colors.GREEN,
+                                    ft.ControlState.HOVERED: ft.Colors.GREEN_700,
                                 },
                             )
             config_num = config.split("-")[0].strip()
@@ -611,8 +626,8 @@ class XrayClientUI:
 
         return ft.ListTile(
             leading=ft.Icon(
-                ft.icons.CLOUD,
-                color=ft.colors.BLUE if is_selected else ft.colors.GREY,
+                ft.Icons.CLOUD,
+                color=ft.Colors.BLUE if is_selected else ft.Colors.GREY,
                 size=24,
             ),
             title=ft.Container(
@@ -621,7 +636,7 @@ class XrayClientUI:
                     size=16,
                     weight=ft.FontWeight.W_500 if is_selected else ft.FontWeight.NORMAL,
                 ),
-                bgcolor=ft.colors.BLUE_100 if is_selected else ft.colors.TRANSPARENT,
+                bgcolor=ft.Colors.BLUE_100 if is_selected else ft.Colors.TRANSPARENT,
                 padding=ft.padding.all(12),
                 animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
                 border_radius=8,
@@ -630,7 +645,7 @@ class XrayClientUI:
                 content=ft.Text(
                     "Ping: -",
                     size=16,
-                    color=ft.colors.GREY_700,
+                    color=ft.Colors.GREY_700,
                 ),
                 padding=ft.padding.all(8),
             ),
@@ -659,7 +674,7 @@ class XrayClientUI:
             self.xray_button.disabled = True
             self.xray_button.content = ft.Row(
                 [
-                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Icon(ft.Icons.PLAY_ARROW),
                     ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
@@ -669,12 +684,12 @@ class XrayClientUI:
                 padding=ft.padding.symmetric(horizontal=30, vertical=20),
                 shape=ft.RoundedRectangleBorder(radius=10),
                 color={
-                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.colors.GREEN,
-                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                    ft.ControlState.DEFAULT: ft.Colors.GREEN,
+                    ft.ControlState.HOVERED: ft.Colors.GREEN_700,
                 },
             )
 
@@ -783,9 +798,9 @@ class XrayClientUI:
                         config_name = control.title.content.value
                         # تغییر شرط رنگ کردن با در نظر گرفتن نام پروفایل
                         if config_name == self.selected_config and profile == self.selected_profile:
-                            control.title.content.bgcolor = ft.colors.LIGHT_BLUE
+                            control.title.content.bgcolor = ft.Colors.LIGHT_BLUE
                         else:
-                            control.title.content.bgcolor = ft.colors.TRANSPARENT
+                            control.title.content.bgcolor = ft.Colors.TRANSPARENT
                     for config in configs:
                         if not any(control.title.content.value == config for control in config_list.controls):
                             config_list.controls.append(self.create_config_tile_with_ping(config, profile))
@@ -890,7 +905,7 @@ class XrayClientUI:
             if "Successfully" in message:
                 self.xray_button.content = ft.Row(
                     [
-                        ft.Icon(ft.icons.STOP),
+                        ft.Icon(ft.Icons.STOP),
                         ft.Text("Stop", size=16, weight=ft.FontWeight.W_500),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -900,12 +915,12 @@ class XrayClientUI:
                 padding=ft.padding.symmetric(horizontal=30, vertical=20),
                 shape=ft.RoundedRectangleBorder(radius=10),
                 color={
-                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                     bgcolor={
-                        ft.ControlState.DEFAULT: ft.colors.RED,
-                        ft.ControlState.HOVERED: ft.colors.RED_700,
+                        ft.ControlState.DEFAULT: ft.Colors.RED,
+                        ft.ControlState.HOVERED: ft.Colors.RED_700,
                     }
                 )
             self.page.update()
@@ -951,7 +966,7 @@ class XrayClientUI:
             message = self.backend.stop_xray()
             self.xray_button.content = ft.Row(
                 [
-                    ft.Icon(ft.icons.PLAY_ARROW),
+                    ft.Icon(ft.Icons.PLAY_ARROW),
                     ft.Text("Start", size=16, weight=ft.FontWeight.W_500),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
@@ -961,12 +976,12 @@ class XrayClientUI:
                 padding=ft.padding.symmetric(horizontal=30, vertical=20),
                 shape=ft.RoundedRectangleBorder(radius=10),
                 color={
-                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.colors.GREEN,
-                    ft.ControlState.HOVERED: ft.colors.GREEN_700,
+                    ft.ControlState.DEFAULT: ft.Colors.GREEN,
+                    ft.ControlState.HOVERED: ft.Colors.GREEN_700,
                 },
             )
             self.log(message)
@@ -983,7 +998,7 @@ class XrayClientUI:
         if "Successfully" in message or "Xray started successfully" in message:
             self.xray_button.content = ft.Row(
                 [
-                    ft.Icon(ft.icons.STOP),
+                    ft.Icon(ft.Icons.STOP),
                     ft.Text("Stop", size=16, weight=ft.FontWeight.W_500),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
@@ -993,12 +1008,12 @@ class XrayClientUI:
                 padding=ft.padding.symmetric(horizontal=30, vertical=20),
                 shape=ft.RoundedRectangleBorder(radius=10),
                 color={
-                    ft.ControlState.DEFAULT: ft.colors.WHITE,
-                    ft.ControlState.HOVERED: ft.colors.WHITE,
+                    ft.ControlState.DEFAULT: ft.Colors.WHITE,
+                    ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.colors.RED,
-                    ft.ControlState.HOVERED: ft.colors.RED_700,
+                    ft.ControlState.DEFAULT: ft.Colors.RED,
+                    ft.ControlState.HOVERED: ft.Colors.RED_700,
                 }
             )
 
@@ -1100,7 +1115,8 @@ class XrayClientUI:
 
     def batch_update(self):
         """انجام به‌روزرسانی‌های تجمیع شده"""
-        if self.pending_updates and not self.page.window_minimized:
+        if self.pending_updates and not self.page.window.minimized:
+        # if self.pending_updates :
             self.page.update()
             self.pending_updates.clear()
         self.update_timer = None
@@ -1180,6 +1196,30 @@ class XrayClientUI:
             self.update_timer.cancel()
         self.log_buffer.clear()
         self.pending_updates.clear()
+
+    def sort_configs_by_ping(self, config_list):
+        configs = []
+        for control in config_list.controls:
+            if isinstance(control, ft.ListTile):
+                ping_text = control.trailing.content.value
+                try:
+                    # Extract ping value (assuming format "Ping: XXXms" or "Ping: -")
+                    ping_value = ping_text.split(": ")[1]
+                    if ping_value == "-":
+                        ping = float('inf')  # Unpinged configs go to the end
+                    else:
+                        ping = float(ping_value.replace("ms", ""))
+                except:
+                    ping = float('inf')
+                
+                configs.append((ping, control))
+
+        # Sort configs by ping value
+        sorted_configs = sorted(configs, key=lambda x: x[0])
+        
+        # Update the ListView with sorted configs
+        config_list.controls = [config[1] for config in sorted_configs]
+        self.page.update()
 
 def main(page: ft.Page):
     XrayClientUI(page)
