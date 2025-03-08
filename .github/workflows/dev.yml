@@ -184,7 +184,7 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip binutils zip gcc gcc-c++ libffi-devel ninja gtk3-devel git which cmake &&
+            dnf install -y python3 python3-pip binutils zip gcc gcc-c++ libffi-devel ninja gtk3-devel git which cmake clang &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
