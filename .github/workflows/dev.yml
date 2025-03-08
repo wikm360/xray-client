@@ -31,13 +31,14 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
+        run: |
+          cd ./GUI-ver
+          flet build windows
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/XC.exe ./release/
-          cp -r ./GUI-ver/subs ./release/
+          cp -r ./GUI-ver/build/windows ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
       - name: Upload Release Asset
@@ -78,6 +79,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++ libgtk-3-dev
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -93,13 +99,13 @@ jobs:
         run: |
           mkdir release
           cp -r ./GUI-ver/build/linux ./release/
-          zip -r ./release/XC-ubuntu.zip ./release/
+          zip -r ./release/XC-ubuntu-latest.zip ./release/
 
       - name: Upload Release Asset
         uses: actions/upload-artifact@v4
         with:
           name: ubuntu-release
-          path: ./release/XC-ubuntu.zip
+          path: ./release/XC-ubuntu-latest.zip
 
   build-ubuntu20:
     runs-on: ubuntu-20.04
@@ -112,6 +118,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build g++ libgtk-3-dev
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -119,12 +130,14 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
+        run: |
+          cd ./GUI-ver
+          flet build linux
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/XC ./release/
+          cp -r ./GUI-ver/build/linux ./release/
           cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-ubuntu20.zip ./release/
 
@@ -140,24 +153,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check if Docker is Installed
-        run: docker --version || echo "Docker not found. Installing..."
-
-      - name: Install Docker dependencies (if needed)
+      - name: Install Docker
         run: |
           sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-
-      - name: Add Docker’s official GPG key and repository
-        run: |
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-      - name: Install Docker
-        run: sudo apt-get install -y docker-ce
-
-      - name: Start Docker
-        run: |
+          sudo apt-get install -y docker.io
           sudo systemctl start docker
           sudo systemctl enable docker
 
@@ -168,18 +167,19 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip binutils zip gcc libffi-devel &&
+            dnf install -y python3 python3-pip ninja gcc-c++ gtk3-devel zip &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm &&
-            ls -lah ./dist/
+            cd ./GUI-ver &&
+            flet build linux &&
+            ls -lah ./build/linux/
           "
 
       - name: Preprocess Release Files
         run: |
           mkdir -p release
-          cp -r ./dist/XC ./release/
+          cp -r ./GUI-ver/build/linux ./release/
           zip -r ./release/XC-fedora.zip ./release/
 
       - name: Upload Release Asset
@@ -187,86 +187,10 @@ jobs:
         with:
           name: fedora-release
           path: ./release/XC-fedora.zip
-        
-  # build-macos:
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - arch: x64
-  #           runner: macos-latest
-  #           prefix: intel
-  #         - arch: arm64
-  #           runner: macos-14
-  #           prefix: apple-silicon
-    
-  #   runs-on: ${{ matrix.runner }}
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-      
-  #     - name: Setup Python ${{ env.PYTHON_VERSION }}
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
-  #         architecture: ${{ matrix.arch }}
-          
-  #     - name: Install dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install --upgrade setuptools wheel
-  #         pip install pyinstaller
-  #         pip install pillow
-  #         pip install -r requirements.txt
-  #         pip install pyobjc-core pyobjc-framework-Cocoa
-  #         pip install flet
-          
-  #     - name: Build executable with PyInstaller
-  #       run: |
-  #         # Create clean build directory
-  #         rm -rf build dist
-          
-  #         # Build with flet
-  #         flet pack \
-  #           -i ./GUI-ver/icon.ico \
-  #           ./GUI-ver/GUI.py \
-  #           -n XC \
-  #           --product-name "XC" \
-  #           --file-description "XC Created By wikm" \
-  #           --product-version "v4.2-${{ github.run_number }}" \
-  #           --file-version "v4.2-${{ github.run_number }}" \
-  #           --company-name "wikm"
-          
-  #     - name: Verify build
-  #       run: |
-  #         if [ ! -d "./dist/XC.app" ]; then
-  #           echo "Build failed - XC.app not found"
-  #           exit 1
-          
-  #     - name: Set executable permissions
-  #       run: |
-  #         chmod +x ./dist/XC.app/Contents/MacOS/XC
-  #         xattr -cr ./dist/XC.app
-          
-  #     - name: Create release package
-  #       run: |
-  #         mkdir -p release/XC
-  #         cp -R ./dist/XC.app release/XC/
-  #         cp -R ./GUI-ver/subs release/XC/
-          
-  #         # Create ZIP with architecture identifier
-  #         cd release
-  #         zip -r "XC-macos-${{ matrix.prefix }}.zip" XC
-  #         cd ..
-          
-  #     - name: Upload Release Asset
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: macos-${{ matrix.prefix }}-release
-  #         path: ./release/XC-macos-${{ matrix.prefix }}.zip
 
   github-release:
     name: Upload to GitHub Release
-    needs: [build-windows, build-ubuntu, build-ubuntu20, build-fedora, build-cli]  # Added ubuntu20
+    needs: [build-windows, build-ubuntu, build-ubuntu20, build-fedora, build-cli]
     runs-on: ubuntu-latest
 
     permissions:
