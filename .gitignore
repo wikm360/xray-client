@@ -17,3 +17,5 @@ subs/
 cache.db
 core/win/select.txt
 custom config V2rayNG.json
+GUI-ver/build
+/myenv

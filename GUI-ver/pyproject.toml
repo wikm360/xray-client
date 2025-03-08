@@ -1,0 +1,24 @@
+[project]
+name = "Xray-Client"
+version = "4.2-7"
+description = "A VPN client based on Xray"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "wikm", email = "mail@wikm.ir" }
+]
+dependencies = [
+  "flet",
+  "Requests",
+  "beautifulsoup4",
+  "pyperclip"
+]
+
+[tool.flet]
+org = "wikm.ir"
+product = "XC (Xray-Client)"
+company = "wikm"
+copyright = "Copyright (C) 2025 by wikm"
+
+[tool.flet.app]
+path = "src"

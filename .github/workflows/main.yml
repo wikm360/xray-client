@@ -31,13 +31,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
           mkdir release
           cp -r ./dist/XC.exe ./release/
-          cp -r ./GUI-ver/subs ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
       - name: Upload Release Asset
@@ -85,13 +84,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
           mkdir release
           cp -r ./dist/XC ./release/
-          cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-ubuntu.zip ./release/
 
       - name: Upload Release Asset
@@ -99,6 +97,38 @@ jobs:
         with:
           name: ubuntu-release
           path: ./release/XC-ubuntu.zip
+
+  build-ubuntu20:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build executable with flet
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp -r ./dist/XC ./release/
+          zip -r ./release/XC-ubuntu20.zip ./release/
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu20-release
+          path: ./release/XC-ubuntu20.zip
 
   build-fedora:
     runs-on: ubuntu-latest
@@ -138,7 +168,7 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description \"XC Created By wikm\" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm &&
+            flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir &&
             ls -lah ./dist/
           "
 
@@ -153,115 +183,6 @@ jobs:
         with:
           name: fedora-release
           path: ./release/XC-fedora.zip
-        
-  # build-macos:
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - arch: x64
-  #           runner: macos-latest
-  #           prefix: intel
-  #         - arch: arm64
-  #           runner: macos-14
-  #           prefix: apple-silicon
-  #   runs-on: ${{ matrix.runner }}
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     
-  #     - name: Setup Python ${{ env.PYTHON_VERSION }}
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: ${{ env.PYTHON_VERSION }}
-  #         architecture: ${{ matrix.arch }}
-  #         
-  #     - name: Install dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install --upgrade setuptools wheel
-  #         pip install pyinstaller
-  #         pip install pillow
-  #         pip install -r requirements.txt
-  #         pip install pyobjc-core pyobjc-framework-Cocoa
-  #         pip install flet
-  #         
-  #     - name: Build executable with PyInstaller
-  #       run: |
-  #         # Create clean build directory
-  #         rm -rf build dist
-  #         
-  #         # Build with flet
-  #         flet pack \
-  #           -i ./GUI-ver/icon.ico \
-  #           ./GUI-ver/GUI.py \
-  #           -n XC \
-  #           --product-name "XC" \
-  #           --file-description "XC Created By wikm" \
-  #           --product-version "v4.2-${{ github.run_number }}" \
-  #           --file-version "v4.2-${{ github.run_number }}" \
-  #           --company-name "wikm"
-  #         
-  #     - name: Verify build
-  #       run: |
-  #         if [ ! -d "./dist/XC.app" ]; then
-  #           echo "Build failed - XC.app not found"
-  #           exit 1
-  #         fi
-  #         
-  #     - name: Set executable permissions
-  #       run: |
-  #         chmod +x ./dist/XC.app/Contents/MacOS/XC
-  #         xattr -cr ./dist/XC.app
-  #         
-  #     - name: Create release package
-  #       run: |
-  #         mkdir -p release/XC
-  #         cp -R ./dist/XC.app release/XC/
-  #         cp -R ./GUI-ver/subs release/XC/
-  #         
-  #         # Create ZIP with architecture identifier
-  #         cd release
-  #         zip -r "XC-macos-${{ matrix.prefix }}.zip" XC
-  #         cd ..
-  #         
-  #     - name: Upload Release Asset
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: macos-${{ matrix.prefix }}-release
-  #         path: ./release/XC-macos-${{ matrix.prefix }}.zip
-
-  build-ubuntu20:
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
-
-      - name: Zip executable and folders
-        run: |
-          mkdir release
-          cp -r ./dist/XC ./release/
-          cp -r ./GUI-ver/subs ./release/
-          zip -r ./release/XC-ubuntu20.zip ./release/
-
-      - name: Upload Release Asset
-        uses: actions/upload-artifact@v4
-        with:
-          name: ubuntu20-release
-          path: ./release/XC-ubuntu20.zip
 
   github-release:
     name: Upload to GitHub Release
@@ -299,18 +220,6 @@ jobs:
         with:
           name: fedora-release
           path: ./release/fedora/
-
-      # - name: Download macOS Intel Release
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: macos-intel-release
-      #     path: ./release/macos-intel/
-
-      # - name: Download macOS Apple Silicon Release
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: macos-apple-silicon-release
-      #     path: ./release/macos-apple-silicon/
       
       - name: Download Release Assets
         uses: actions/download-artifact@v4
@@ -326,6 +235,7 @@ jobs:
           "v4.2-${{ github.run_number }}"
           --repo "${{ github.repository }}"
           --notes ""
+          --prerelease
           --generate-notes
           --title "Release v4.2-${{ github.run_number }}"
 

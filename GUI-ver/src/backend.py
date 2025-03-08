@@ -29,6 +29,11 @@ class XrayBackend:
         self.useragant = lambda: json.load(open("./setting.json", "r"))["useragent"]
         self._process_output_buffer = deque(maxlen=100)
         self._output_lock = threading.Lock()
+        self.xray_path = XRAY_PATH  # Path to xray executable
+        self.server = API        # Xray API server address
+        self._last_bytes_sent = 0   # Last recorded upload bytes
+        self._last_bytes_recv = 0   # Last recorded download bytes
+        self._last_traffic_check = time.time()  # Last time traffic was checked
 
     def get_system_info(self):
         return {
@@ -58,119 +63,180 @@ class XrayBackend:
         return configs
 
     def import_subscription(self, name, url):
-        if isinstance (url , str)  :
-            if url.startswith("http"):
-                useragent = str(self.useragant())
-                headers = {"user-agent": useragent}
-                r = requests.get(url=url, headers=headers)
-                text = r.text
-                if "[" in text :
-                    #  custom
-                    self.log("Custom config Detect ...")
-                    data = r.json()
-                    dict_name = {}
-                    count = 0
-                    for config in data :
-                        directory_path = f"./subs/{name}"
-                        Path(directory_path).mkdir(parents=True, exist_ok=True)
+        def add_api_stats_config(config):
+            """Add API, stats and policy settings to config if missing"""
+            base_additions = {
+                "api": {
+                    "tag": "api",
+                    "services": ["HandlerService", "LoggerService", "StatsService"]
+                },
+                "stats": {},
+                "policy": {
+                    "levels": {
+                        "0": {
+                            "statsUserUplink": True,
+                            "statsUserDownlink": True
+                        }
+                    },
+                    "system": {
+                        "statsInboundUplink": True,
+                        "statsInboundDownlink": True,
+                        "statsOutboundUplink": True,
+                        "statsOutboundDownlink": True
+                    }
+                }
+            }
 
-                        try :
-                            del config["dns"]
-                        except Exception as e:
-                            self.log(f"Faild in delete dns Parse Json ...{e}")
-                        try :
-                            config["inbounds"][0]["port"] = 1080
-                            config["inbounds"][1]["port"] = 1081
-                        except Exception as e :
-                            self.log(f"Faild in chenge port Json ...  {e}")
-                        config_name = config["remarks"]
-                        config_json = json.dumps(config , indent=4)
+            # Add API inbound if missing
+            api_inbound = {
+                "tag": "api",
+                "port": 10085,
+                "listen": "127.0.0.1", 
+                "protocol": "dokodemo-door",
+                "settings": {
+                    "address": "127.0.0.1"
+                }
+            }
 
-                        if config_name != "False":
-                            with open(f"./subs/{name}/{count}.json", "w") as f:
-                                f.write(config_json)
-                            dict_name[count] = config_name
-                            count += 1
-                    with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                        json.dump(dict_name, f, ensure_ascii=False, indent=4)
-                    with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                        f.write(url)
-                    
-                else :    
-                    decoded_bytes = base64.b64decode(text)
-                    decoded_str = decoded_bytes.decode('utf-8')
-                    list_configs = decoded_str.split("\n")
+            if "inbounds" not in config:
+                config["inbounds"] = []
+            
+            if not any(inb.get("tag") == "api" for inb in config["inbounds"]):
+                config["inbounds"].append(api_inbound)
 
-                    directory_path = f"./subs/{name}"
-                    Path(directory_path).mkdir(parents=True, exist_ok=True)
+            # Add other base components if missing
+            for key, value in base_additions.items():
+                if key not in config:
+                    config[key] = value
 
-                    dict_name = {}
-                    for count, config in enumerate(list_configs):
-                        if config.strip():
-                            config_json, config_name = convert.convert(config)
-                            if config_json == None :
-                                continue
-                            if config_name != "False":
-                                with open(f"./subs/{name}/{count}.json", "w") as f:
+            # Add API routing rule if missing
+            if "routing" not in config:
+                config["routing"] = {"rules": []}
+            
+            api_rule = {
+                "type": "field",
+                "inboundTag": ["api"],
+                "outboundTag": "api"
+            }
+
+            if not any(rule.get("inboundTag") == ["api"] for rule in config["routing"].get("rules", [])):
+                config["routing"]["rules"].insert(0, api_rule)
+
+            return config
+
+        try:
+            directory_path = f"./subs/{name}"
+            Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+            if isinstance(url, str):
+                if url.startswith("http"):
+                    # HTTP(S) subscription
+                    useragent = str(self.useragant())
+                    headers = {"user-agent": useragent}
+                    response = requests.get(url=url, headers=headers, timeout=10)
+                    response.raise_for_status()
+                    text = response.text
+
+                    if text.strip().startswith("["):
+                        # Custom JSON array config
+                        self.log("Custom config array detected...")
+                        configs = json.loads(text)
+                        dict_name = {}
+                        
+                        for count, config in enumerate(configs):
+                            try:
+                                # Add required components if missing
+                                config = add_api_stats_config(config)
+                                
+                                # Update inbound ports
+                                for inbound in config.get("inbounds", []):
+                                    if inbound.get("tag") == "socks":
+                                        inbound["port"] = 1080
+                                    elif inbound.get("tag") == "api":
+                                        inbound["port"] = 10085
+
+                                config_name = config.get("remarks", f"Config {count + 1}")
+                                config_json = json.dumps(config, indent=4)
+
+                                with open(f"{directory_path}/{count}.json", "w") as f:
                                     f.write(config_json)
                                 dict_name[count] = config_name
+                            except Exception as e:
+                                self.log(f"Error processing config {count}: {str(e)}")
+                                continue
 
-                    with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                        json.dump(dict_name, f, ensure_ascii=False, indent=4)
-                    with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                        f.write(url)
-            
-            # one costum config
-            elif "{" in url :
-                if url.strip():
-                    directory_path = f"./subs/{name}"
-                    Path(directory_path).mkdir(parents=True, exist_ok=True)
+                    else:
+                        # Base64 encoded subscription
+                        try:
+                            decoded_str = base64.b64decode(text).decode('utf-8')
+                            configs = [x.strip() for x in decoded_str.split("\n") if x.strip()]
+                            dict_name = {}
+                            
+                            for count, config in enumerate(configs):
+                                try:
+                                    config_json, config_name = convert.convert(config)
+                                    if config_json and config_name != "False":
+                                        with open(f"{directory_path}/{count}.json", "w") as f:
+                                            f.write(config_json)
+                                        dict_name[count] = config_name
+                                except Exception as e:
+                                    self.log(f"Error converting config {count}: {str(e)}")
+                                    continue
+                        except Exception as e:
+                            self.log(f"Error decoding base64: {str(e)}")
+                            return
 
-                    data = json.loads(url)
-                    try :
-                        del data["dns"]
+                elif url.startswith("{"):
+                    # Single JSON config
+                    try:
+                        config = json.loads(url)
+                        config = add_api_stats_config(config)
+                        
+                        # Update inbound ports
+                        for inbound in config.get("inbounds", []):
+                            if inbound.get("tag") == "socks":
+                                inbound["port"] = 1080
+                            elif inbound.get("tag") == "api":
+                                inbound["port"] = 10085
+
+                        config_name = config.get("remarks", ''.join(random.choices(string.ascii_letters, k=8)))
+                        config_json = json.dumps(config, indent=4)
+                        
+                        with open(f"{directory_path}/0.json", "w") as f:
+                            f.write(config_json)
+                        dict_name = {0: config_name}
+                    except json.JSONDecodeError as e:
+                        self.log(f"Invalid JSON config: {str(e)}")
+                        return
+                        
+                else:
+                    # Single vmess/vless config
+                    try:
+                        config_json, config_name = convert.convert(url)
+                        if config_json and config_name != "False":
+                            with open(f"{directory_path}/0.json", "w") as f:
+                                f.write(config_json)
+                            dict_name = {0: config_name}
+                        else:
+                            self.log("Config not supported or invalid")
+                            return
                     except Exception as e:
-                        self.log(f"Faild in delete dns Parse Json ...{e}")
-                    try :
-                        data["inbounds"][0]["port"] = 1080
-                        data["inbounds"][1]["port"] = 1081
-                    except Exception as e :
-                        self.log(f"Faild in chenge port Json ...  {e}")
+                        self.log(f"Error converting config: {str(e)}")
+                        return
 
-                    def generate_random_word(length=8):
-                        return ''.join(random.choices(string.ascii_letters, k=length))
-                    
-                    config_name = data.get("remarks", generate_random_word())
-                    config_json = json.dumps(data , indent=4)
-
-                    if config_name != "False":
-                        with open(f"./subs/{name}/0.json", "w") as f:
-                            f.write(config_json)
-                with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                    json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
-                with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                # Save config list and URL
+                with open(f"{directory_path}/list.json", "w", encoding="utf-8") as f:
+                    json.dump(dict_name, f, ensure_ascii=False, indent=4)
+                
+                with open(f"{directory_path}/url.txt", "w", encoding="utf-8") as f:
                     f.write(url)
+            else:
+                self.log("URL must be a string")
 
-            #one vmess or vless config
-            else  :
-                config  = url
-                directory_path = f"./subs/{name}"
-                Path(directory_path).mkdir(parents=True, exist_ok=True)
-
-                if config.strip():
-                    config_json, config_name = convert.convert(config)
-                    if config_json == None :
-                        self.log("Config Not Support")
-                    if config_name != "False":
-                        with open(f"./subs/{name}/0.json", "w") as f:
-                            f.write(config_json)
-                with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                    json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
-                with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                    f.write(url)
-
-        else :
-            self.log("URL not  String ...")
+        except Exception as e:
+            self.log(f"Error in import_subscription: {str(e)}")
+            if os.path.exists(directory_path):
+                shutil.rmtree(directory_path)
 
     def update_subscription(self, profile):
         path = f"./subs/{profile}/url.txt"
@@ -454,11 +520,11 @@ class XrayBackend:
                 
     def run_xray(self, config_path):
         try:
-            xray_path = f"./core/{self.os_sys}/xray"
+            # xray_path = f"./core/{self.os_sys}/xray"
             creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
             
             self.xray_process = subprocess.Popen(
-                [xray_path, '-config', config_path],
+                [XRAY_PATH, '-config', config_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -535,11 +601,11 @@ class XrayBackend:
         def _read_stream(stream):
             for line in iter(stream.readline, ''):
                 with self._output_lock:
-                    if len(line.strip()) > 0:  # فقط خطوط غیر خالی
+                    if len(line.strip()) > 0:
                         self._process_output_buffer.append(f"{name}: {line.strip()}")
                         if self.log_callback:
                             self.log_callback(self._process_output_buffer[-1])
-                time.sleep(0.01)  # کاهش مصرف CPU
+                time.sleep(0.01)
 
         threading.Thread(target=_read_stream, args=(process.stdout,), daemon=True).start()
         threading.Thread(target=_read_stream, args=(process.stderr,), daemon=True).start()
@@ -557,6 +623,12 @@ class XrayBackend:
             self.singbox_process.terminate()
             self.singbox_process = None
             self.log("Sing-box has been stopped.")
+            
+        # Reset traffic stats and last values when stopping Xray
+        self._last_bytes_sent = 0
+        self._last_bytes_recv = 0
+        self._last_traffic_check = time.time()
+        
         return "Xray and Sing-box are not running."
 
     def set_system_proxy(self , proxy_ip, proxy_port):
@@ -622,6 +694,61 @@ class XrayBackend:
             self.log("Proxy disabled successfully")
         except Exception as e:
             self.log(f"Error disabling proxy: {e}")
+
+    def _get_xray_traffic(self, stat_name):
+            """Helper function to get traffic stats from Xray"""
+            try:
+                result = subprocess.run(
+                    [self.xray_path, "api", "stats", f"--server={self.server}", f"-name={stat_name}"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    data = json.loads(result.stdout)
+                    return data.get("stat", {}).get("value", 0)
+                else:
+                    print(f"Error fetching {stat_name}: {result.stderr}")
+                    return 0
+            except Exception as e:
+                print(f"Error: {e}")
+                return 0
+
+    def get_system_traffic(self):
+        """Get traffic statistics from Xray for the proxy connection"""
+        try:
+            # Get current traffic stats from Xray
+            bytes_sent = self._get_xray_traffic("outbound>>>proxy>>>traffic>>>uplink")
+            bytes_recv = self._get_xray_traffic("outbound>>>proxy>>>traffic>>>downlink")
+            
+            # Get current time and calculate time difference
+            current_time = time.time()
+            time_delta = current_time - self._last_traffic_check
+            
+            # Calculate speeds (bytes per second)
+            upload_speed = (bytes_sent - self._last_bytes_sent) / time_delta if time_delta > 0 else 0
+            download_speed = (bytes_recv - self._last_bytes_recv) / time_delta if time_delta > 0 else 0
+            
+            # Update last values
+            self._last_bytes_sent = bytes_sent
+            self._last_bytes_recv = bytes_recv
+            self._last_traffic_check = current_time
+            
+            # Return traffic stats in the same format as the original
+            return {
+                'speed': (upload_speed, download_speed),  # (upload speed, download speed) in bytes/second
+                'total': (bytes_sent, bytes_recv)         # (total sent, total received) in bytes
+            }
+            
+        except Exception as e:
+            print(f"Error getting Xray traffic: {str(e)}")
+            return {
+                'speed': (0, 0),
+                'total': (0, 0)
+            }
+
+    def get_traffic_stats(self):
+        """Get current traffic statistics"""
+        return self.get_system_traffic()
 
     def log(self, message):
         if self.log_callback:
