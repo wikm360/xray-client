@@ -23,6 +23,8 @@ class XrayClientUI:
         self.page.window.min_width = 600
         self.page.window.min_height =730
         self.useragent = self.read_settinng("useragent")
+        self.current_view = "logs"  # Track current view: "logs" or "traffic"
+        self.traffic_update_timer = None
 
         def handle_window_event(e):
             if e.data == "close":
@@ -282,6 +284,48 @@ class XrayClientUI:
             border_color=ft.Colors.BLUE_200,
             border_radius=8,
             text_size=14,
+            visible=True,  # Initially visible
+        )
+
+        self.traffic_view = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(ft.Icons.UPLOAD, color=ft.Colors.GREEN),
+                    ft.Text("Upload: 0 B/s", size=16, weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([
+                    ft.Icon(ft.Icons.DOWNLOAD, color=ft.Colors.BLUE),
+                    ft.Text("Download: 0 B/s", size=16, weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([
+                    ft.Icon(ft.Icons.DATA_USAGE, color=ft.Colors.ORANGE),
+                    ft.Text("Total Upload: 0 B", size=16, weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([
+                    ft.Icon(ft.Icons.DATA_USAGE, color=ft.Colors.PURPLE),
+                    ft.Text("Total Download: 0 B", size=16, weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+            ], 
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=20),
+            padding=30,
+            expand=True,
+            visible=False,  # Initially hidden
+        )
+
+        view_switch = ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.Icons.SWAP_HORIZ),
+                    ft.Text("Switch View", size=16),
+                ],
+                spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
+            ),
+            on_click=self.toggle_view,
         )
         
         home_content = ft.Column([
@@ -290,14 +334,17 @@ class XrayClientUI:
             ft.Row([
                 self.xray_button,
                 ft.Container(width=20),
-                self.mode_switch
+                self.mode_switch,
+                ft.Container(width=20),
+                view_switch,
             ], alignment=ft.MainAxisAlignment.CENTER),
             ft.Container(height=5),
             ft.Row([
                 ft.Icon(ft.Icons.TERMINAL, color=ft.Colors.BLUE),
-                ft.Text("Xray Logs:", size=18, weight=ft.FontWeight.BOLD),
+                ft.Text("Xray Status:", size=18, weight=ft.FontWeight.BOLD),
             ], alignment=ft.MainAxisAlignment.CENTER),
-            self.log_view
+            self.log_view,
+            self.traffic_view,
         ], expand=True, spacing=15)
 
         self.tabs.tabs[0].content = home_content
@@ -379,19 +426,28 @@ class XrayClientUI:
             on_click=lambda e: self.ping_button(e.control, config_list)
         )
 
-        sort_button = ft.ElevatedButton(
+        # Replace sort button with dropdown button
+        sort_button = ft.PopupMenuButton(
             content=ft.Row(
                 [
                     ft.Icon(ft.Icons.SORT, size=20),
-                    ft.Text("Sort by Ping", size=16),
+                    ft.Text("Sort", size=16),
                 ],
                 spacing=8,
             ),
-            style=ft.ButtonStyle(
-                padding=ft.padding.all(15),
-                shape=ft.RoundedRectangleBorder(radius=8),
-            ),
-            on_click=lambda _: self.sort_configs_by_ping(config_list)
+            items=[
+                ft.PopupMenuItem(
+                    text="By Ping",
+                    icon=ft.icons.NETWORK_PING,
+                    on_click=lambda _: self.sort_configs_by_ping(config_list)
+                ),
+                ft.PopupMenuItem(
+                    text="By Number",
+                    icon=ft.icons.FORMAT_LIST_NUMBERED,
+                    on_click=lambda _: self.sort_configs_by_number(config_list)
+                ),
+            ],
+            tooltip="Sort configs"
         )
 
         tab_content = ft.Column([
@@ -1194,6 +1250,8 @@ class XrayClientUI:
         """پاکسازی منابع هنگام بستن برنامه"""
         if self.update_timer:
             self.update_timer.cancel()
+        if self.traffic_update_timer:
+            self.traffic_update_timer.cancel()
         self.log_buffer.clear()
         self.pending_updates.clear()
 
@@ -1220,6 +1278,74 @@ class XrayClientUI:
         # Update the ListView with sorted configs
         config_list.controls = [config[1] for config in sorted_configs]
         self.page.update()
+
+    def sort_configs_by_number(self, config_list):
+        """Sort configs by their number"""
+        configs = []
+        for control in config_list.controls:
+            if isinstance(control, ft.ListTile):
+                try:
+                    # Extract config number from the title
+                    config_num = int(control.title.content.value.split("-")[0].strip())
+                    configs.append((config_num, control))
+                except:
+                    configs.append((float('inf'), control))
+        
+        # Sort configs by number
+        sorted_configs = sorted(configs, key=lambda x: x[0])
+        
+        # Update the ListView with sorted configs
+        config_list.controls = [config[1] for config in sorted_configs]
+        self.page.update()
+
+    def toggle_view(self, e):
+        self.current_view = "traffic" if self.current_view == "logs" else "logs"
+        self.log_view.visible = self.current_view == "logs"
+        self.traffic_view.visible = self.current_view == "traffic"
+        
+        # Start or stop traffic updates based on view
+        if self.current_view == "traffic":
+            self.start_traffic_updates()
+        else:
+            self.stop_traffic_updates()
+            
+        self.page.update()
+
+    def start_traffic_updates(self):
+        def update_traffic():
+            if self.traffic_view.visible and self.backend.xray_process:
+                # دریافت آمار ترافیک از بکند
+                stats = self.backend.get_traffic_stats()
+                if stats:
+                    upload_speed, download_speed = stats.get('speed', (0, 0))
+                    total_upload, total_download = stats.get('total', (0, 0))
+                    
+                    # به‌روزرسانی نمایش ترافیک
+                    self.traffic_view.content.controls[0].controls[1].value = f"Upload: {self.format_bytes(upload_speed)}/s"
+                    self.traffic_view.content.controls[1].controls[1].value = f"Download: {self.format_bytes(download_speed)}/s"
+                    self.traffic_view.content.controls[2].controls[1].value = f"Total Upload: {self.format_bytes(total_upload)}"
+                    self.traffic_view.content.controls[3].controls[1].value = f"Total Download: {self.format_bytes(total_download)}"
+                    self.page.update()
+
+            # زمان‌بندی به‌روزرسانی بعدی
+            if self.traffic_view.visible:
+                self.traffic_update_timer = threading.Timer(1.0, update_traffic)
+                self.traffic_update_timer.start()
+
+        update_traffic()
+
+    def stop_traffic_updates(self):
+        if self.traffic_update_timer:
+            self.traffic_update_timer.cancel()
+            self.traffic_update_timer = None
+
+    @staticmethod
+    def format_bytes(bytes):
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if bytes < 1024:
+                return f"{bytes:.2f} {unit}"
+            bytes /= 1024
+        return f"{bytes:.2f} TB"
 
 def main(page: ft.Page):
     XrayClientUI(page)

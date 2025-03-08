@@ -29,6 +29,19 @@ class XrayBackend:
         self.useragant = lambda: json.load(open("./setting.json", "r"))["useragent"]
         self._process_output_buffer = deque(maxlen=100)
         self._output_lock = threading.Lock()
+        # self._upload_speed = 0
+        # self._download_speed = 0
+        # self._total_upload = 0
+        # self._total_download = 0
+        # self._traffic_lock = threading.Lock()
+        # self._last_traffic_check = time.time()
+        # self._last_bytes_sent = 0
+        # self._last_bytes_recv = 0
+        self.xray_path = XRAY_PATH  # Path to xray executable
+        self.server = API        # Xray API server address
+        self._last_bytes_sent = 0   # Last recorded upload bytes
+        self._last_bytes_recv = 0   # Last recorded download bytes
+        self._last_traffic_check = time.time()  # Last time traffic was checked
 
     def get_system_info(self):
         return {
@@ -454,11 +467,11 @@ class XrayBackend:
                 
     def run_xray(self, config_path):
         try:
-            xray_path = f"./core/{self.os_sys}/xray"
+            # xray_path = f"./core/{self.os_sys}/xray"
             creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
             
             self.xray_process = subprocess.Popen(
-                [xray_path, '-config', config_path],
+                [XRAY_PATH, '-config', config_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -535,11 +548,11 @@ class XrayBackend:
         def _read_stream(stream):
             for line in iter(stream.readline, ''):
                 with self._output_lock:
-                    if len(line.strip()) > 0:  # فقط خطوط غیر خالی
+                    if len(line.strip()) > 0:
                         self._process_output_buffer.append(f"{name}: {line.strip()}")
                         if self.log_callback:
                             self.log_callback(self._process_output_buffer[-1])
-                time.sleep(0.01)  # کاهش مصرف CPU
+                time.sleep(0.01)
 
         threading.Thread(target=_read_stream, args=(process.stdout,), daemon=True).start()
         threading.Thread(target=_read_stream, args=(process.stderr,), daemon=True).start()
@@ -557,6 +570,15 @@ class XrayBackend:
             self.singbox_process.terminate()
             self.singbox_process = None
             self.log("Sing-box has been stopped.")
+        # Reset traffic stats when stopping Xray
+        with self._traffic_lock:
+            self._upload_speed = 0
+            self._download_speed = 0 
+            self._total_upload = 0
+            self._total_download = 0
+            if hasattr(self, '_last_up'):
+                del self._last_up
+                del self._last_down
         return "Xray and Sing-box are not running."
 
     def set_system_proxy(self , proxy_ip, proxy_port):
@@ -622,6 +644,61 @@ class XrayBackend:
             self.log("Proxy disabled successfully")
         except Exception as e:
             self.log(f"Error disabling proxy: {e}")
+
+    def _get_xray_traffic(self, stat_name):
+            """Helper function to get traffic stats from Xray"""
+            try:
+                result = subprocess.run(
+                    [self.xray_path, "api", "stats", f"--server={self.server}", f"-name={stat_name}"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    data = json.loads(result.stdout)
+                    return data.get("stat", {}).get("value", 0)
+                else:
+                    print(f"Error fetching {stat_name}: {result.stderr}")
+                    return 0
+            except Exception as e:
+                print(f"Error: {e}")
+                return 0
+
+    def get_system_traffic(self):
+        """Get traffic statistics from Xray for the proxy connection"""
+        try:
+            # Get current traffic stats from Xray
+            bytes_sent = self._get_xray_traffic("outbound>>>proxy>>>traffic>>>uplink")
+            bytes_recv = self._get_xray_traffic("outbound>>>proxy>>>traffic>>>downlink")
+            
+            # Get current time and calculate time difference
+            current_time = time.time()
+            time_delta = current_time - self._last_traffic_check
+            
+            # Calculate speeds (bytes per second)
+            upload_speed = (bytes_sent - self._last_bytes_sent) / time_delta if time_delta > 0 else 0
+            download_speed = (bytes_recv - self._last_bytes_recv) / time_delta if time_delta > 0 else 0
+            
+            # Update last values
+            self._last_bytes_sent = bytes_sent
+            self._last_bytes_recv = bytes_recv
+            self._last_traffic_check = current_time
+            
+            # Return traffic stats in the same format as the original
+            return {
+                'speed': (upload_speed, download_speed),  # (upload speed, download speed) in bytes/second
+                'total': (bytes_sent, bytes_recv)         # (total sent, total received) in bytes
+            }
+            
+        except Exception as e:
+            print(f"Error getting Xray traffic: {str(e)}")
+            return {
+                'speed': (0, 0),
+                'total': (0, 0)
+            }
+
+    def get_traffic_stats(self):
+        """Get current traffic statistics"""
+        return self.get_system_traffic()
 
     def log(self, message):
         if self.log_callback:

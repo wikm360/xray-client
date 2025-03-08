@@ -1,5 +1,3 @@
-#xray.exe run -c config.json
-
 import json
 import base64
 import urllib.parse
@@ -110,43 +108,86 @@ def decode_vmess(link):
                 "show": bool(config.get('show', False))
             }
 
+        # Base Xray configuration with API and Stats support
         xray_config = {
             "log": {"loglevel": "info"},
-            "inbounds": [{
-                "tag": "socks",
-                "port": 1080,
-                "listen": "127.0.0.1",
-                "protocol": "socks",
-                "sniffing": {
-                    "enabled": True,
-                    "destOverride": ["http", "tls"],
-                    "routeOnly": False
+            "api": {
+                "tag": "api",
+                "services": ["HandlerService", "LoggerService", "StatsService"]
+            },
+            "stats": {},
+            "policy": {
+                "levels": {
+                    "0": {
+                        "statsUserUplink": True,
+                        "statsUserDownlink": True
+                    }
                 },
-                "settings": {
-                    "auth": "noauth",
-                    "udp": True,
-                    "allowTransparent": False
+                "system": {
+                    "statsInboundUplink": True,
+                    "statsInboundDownlink": True,
+                    "statsOutboundUplink": True,
+                    "statsOutboundDownlink": True
                 }
-            }],
-            "outbounds": [{
-                "protocol": "vmess",
-                "settings": {
-                    "vnext": [{
-                        "address": address,
-                        "port": int(port) if port else 443,
-                        "users": [{
-                            "id": config.get('id', ''),
-                            "alterId": int(config.get('aid', 0)),
-                            "security": config.get('scy', 'auto'),
-                            "level": config.get('level', 8),
-                            "encryption": config.get('encryption', ''),
-                            "flow": config.get('flow', '')
-                        }]
-                    }]
+            },
+            "inbounds": [
+                {
+                    "tag": "socks",
+                    "port": 1080,
+                    "listen": "127.0.0.1",
+                    "protocol": "socks",
+                    "sniffing": {
+                        "enabled": True,
+                        "destOverride": ["http", "tls"],
+                        "routeOnly": False
+                    },
+                    "settings": {
+                        "auth": "noauth",
+                        "udp": True,
+                        "allowTransparent": False
+                    }
                 },
-                "streamSettings": stream_settings,
-                "tag": "proxy"
-            }],
+                {
+                    "tag": "api",
+                    "port": 10085,
+                    "listen": "127.0.0.1",
+                    "protocol": "dokodemo-door",
+                    "settings": {
+                        "address": "127.0.0.1"
+                    }
+                }
+            ],
+            "outbounds": [
+                {
+                    "protocol": "vmess",
+                    "settings": {
+                        "vnext": [{
+                            "address": address,
+                            "port": int(port) if port else 443,
+                            "users": [{
+                                "id": config.get('id', ''),
+                                "alterId": int(config.get('aid', 0)),
+                                "security": config.get('scy', 'auto'),
+                                "level": config.get('level', 8),
+                                "encryption": config.get('encryption', ''),
+                                "flow": config.get('flow', '')
+                            }]
+                        }]
+                    },
+                    "streamSettings": stream_settings,
+                    "tag": "proxy"
+                },
+                {
+                    "protocol": "freedom",
+                    "settings": {},
+                    "tag": "direct"
+                },
+                {
+                    "protocol": "blackhole",
+                    "settings": {},
+                    "tag": "block"
+                }
+            ],
             "dns": {
                 "hosts": {
                     "dns.google": "8.8.8.8"
@@ -233,8 +274,7 @@ def decode_vless(link):
             "path": get_param('path', "/"),
             "host": get_param('host', "")
         }
-    elif stream_settings["network"] == "xhttp":  # Added support for xhttp type
-        # Parse the "extra" field from URL-encoded JSON
+    elif stream_settings["network"] == "xhttp":
         extra_settings = {}
         if 'extra' in query_params:
             try:
@@ -243,39 +283,25 @@ def decode_vless(link):
             except Exception as e:
                 print(f"Error parsing extra parameter: {e}")
         
-        # Create xhttpSettings with the structure you requested
         xhttp_settings = {
             "mode": get_param('mode', "packet-up"),
             "path": get_param('path', "/"),
             "host": get_param('host', "")
         }
         
-        # Create the extra field structure
         extra_field = {}
-        
-        # Add the specific fields from extra_settings to extra_field
         if extra_settings:
-            # Include scMaxEachPostBytes if it exists
             if 'scMaxEachPostBytes' in extra_settings:
                 extra_field["scMaxEachPostBytes"] = extra_settings['scMaxEachPostBytes']
-            
-            # Include scMinPostsIntervalMs if it exists
             if 'scMinPostsIntervalMs' in extra_settings:
                 extra_field["scMinPostsIntervalMs"] = extra_settings['scMinPostsIntervalMs']
-            
-            # Include xPaddingBytes if it exists
             if 'xPaddingBytes' in extra_settings:
                 extra_field["xPaddingBytes"] = extra_settings['xPaddingBytes']
-            
-            # Include noGRPCHeader if it exists
             if 'noGRPCHeader' in extra_settings:
                 extra_field["noGRPCHeader"] = extra_settings['noGRPCHeader']
-            
-            # Include xmux if it exists
             if 'xmux' in extra_settings:
                 extra_field["xmux"] = extra_settings['xmux']
         
-        # Add the extra field to xhttpSettings if it's not empty
         if extra_field:
             xhttp_settings["extra"] = extra_field
             
@@ -313,32 +339,94 @@ def decode_vless(link):
         stream_settings["tlsSettings"] = {
             "serverName": get_param('sni', ""),
             "fingerprint": get_param('fp', ""),
-            "alpn": get_param('alpn', "http/1.1").split(','),  # Parse comma-separated ALPN values
+            "alpn": get_param('alpn', "http/1.1").split(','),
             "allowInsecure": get_param('allowInsecure', 'false').lower() == 'true' or get_param('allowInsecure', '0') == '1'
         }
 
+    # Base Xray configuration with API and Stats support
     xray_config = {
         "log": {"loglevel": "info"},
-        "inbounds": [{
-            "tag": "socks", "port": 1080, "listen": "127.0.0.1" , "protocol": "socks" , "sniffing": {"enabled": True ,"destOverride": ["http","tls"],"routeOnly": False} , "settings": {"auth": "noauth", "udp": True , "allowTransparent": False}
-        }],
-        "outbounds": [{
-            "protocol": "vless",
-            "settings": {
-                "vnext": [{
-                    "address": address, "port": int(port),
-                    "users": [{"id": uuid, "encryption": "none"}]
-                }]
+        "api": {
+            "tag": "api",
+            "services": ["HandlerService", "LoggerService", "StatsService"]
+        },
+        "stats": {},
+        "policy": {
+            "levels": {
+                "0": {
+                    "statsUserUplink": True,
+                    "statsUserDownlink": True
+                }
             },
-            "streamSettings": stream_settings,
-            "tag": "proxy"
-        }],
+            "system": {
+                "statsInboundUplink": True,
+                "statsInboundDownlink": True,
+                "statsOutboundUplink": True,
+                "statsOutboundDownlink": True
+            }
+        },
+        "inbounds": [
+            {
+                "tag": "socks",
+                "port": 1080,
+                "listen": "127.0.0.1",
+                "protocol": "socks",
+                "sniffing": {
+                    "enabled": True,
+                    "destOverride": ["http", "tls"],
+                    "routeOnly": False
+                },
+                "settings": {
+                    "auth": "noauth",
+                    "udp": True,
+                    "allowTransparent": False
+                }
+            },
+            {
+                "tag": "api",
+                "port": 10085,
+                "listen": "127.0.0.1",
+                "protocol": "dokodemo-door",
+                "settings": {
+                    "address": "127.0.0.1"
+                }
+            }
+        ],
+        "outbounds": [
+            {
+                "protocol": "vless",
+                "settings": {
+                    "vnext": [{
+                        "address": address,
+                        "port": int(port),
+                        "users": [{"id": uuid, "encryption": "none"}]
+                    }]
+                },
+                "streamSettings": stream_settings,
+                "tag": "proxy"
+            },
+            {
+                "protocol": "freedom",
+                "settings": {},
+                "tag": "direct"
+            },
+            {
+                "protocol": "blackhole",
+                "settings": {},
+                "tag": "block"
+            }
+        ],
         "dns": {
             "servers": ["1.1.1.1", "8.8.8.8"]
         },
         "routing": {
             "domainStrategy": "AsIs",
             "rules": [
+                {
+                    "type": "field",
+                    "inboundTag": ["api"],
+                    "outboundTag": "api"
+                },
                 {
                     "type": "field",
                     "port": "443",
@@ -380,3 +468,9 @@ def convert(config):
     # print("Configuration saved to 'xray_config.json'")
 
     return config_json, config_name
+
+# Example usage
+if __name__ == "__main__":
+    # Example VMess link
+    vmess_link = "vmess://eyJhZGQiOiJleGFtcGxlLmNvbSIsInBvcnQiOiI0NDMiLCJpZCI6ImFiYyIsImFpZCI6IjAiLCJzY3kiOiJhdXRvIiwibmV0IjoidGNwIiwicHMiOiJNeSBWMWVzcyJ9"
+    config_json, config_name = convert(vmess_link)
