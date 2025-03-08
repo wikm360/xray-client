@@ -13,6 +13,55 @@ env:
   PYTHON_VERSION: 3.12.6
 
 jobs:
+  build-windows-7:
+    runs-on: windows-2019
+    env:
+      PYTHON_VERSION: '3.8'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller==5.13.2
+          pip install -r requirements.txt
+
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller --onefile --icon=./GUI-ver/src/icon.ico `
+            --name XC `
+            --version-file version.txt `
+            ./GUI-ver/src/main.py
+        shell: powershell
+
+      - name: Create version file
+        run: |
+          echo $VERSION = "v4.2-${{ github.run_number }}" > version.txt
+          echo $FILEVERSION = "v4.2-${{ github.run_number }}" >> version.txt
+          echo $PRODUCTNAME = "XC" >> version.txt
+          echo $COMPANYNAME = "wikm.ir" >> version.txt
+          echo $FILEDESCRIPTION = "XC Created By wikm" >> version.txt
+        shell: powershell
+
+      - name: Zip executable and folders
+        run: |
+          mkdir release
+          cp ./dist/XC.exe ./release/
+          powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows7.zip
+
+      - name: Upload Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows7-release
+          path: ./release/XC-windows7.zip
+  
   build-windows:
     runs-on: windows-latest
     steps:
@@ -31,18 +80,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        env:
-          PYTHONIOENCODING: utf-8
-          NO_COLOR: 1
-        run: |
-          cd ./GUI-ver
-          flet build windows
-        shell: pwsh
+        run: flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./GUI-ver/build/windows ./release/
+          cp -r ./dist/XC.exe ./release/
           powershell Compress-Archive -Path ./release/* -DestinationPath ./release/XC-windows.zip
 
       - name: Upload Release Asset
@@ -83,11 +126,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build g++ libgtk-3-dev
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -95,21 +133,19 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: |
-          cd ./GUI-ver
-          flet build linux
+        run: flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./GUI-ver/build/linux ./release/
-          zip -r ./release/XC-ubuntu-latest.zip ./release/
+          cp -r ./dist/XC ./release/
+          zip -r ./release/XC-ubuntu.zip ./release/
 
       - name: Upload Release Asset
         uses: actions/upload-artifact@v4
         with:
           name: ubuntu-release
-          path: ./release/XC-ubuntu-latest.zip
+          path: ./release/XC-ubuntu.zip
 
   build-ubuntu20:
     runs-on: ubuntu-20.04
@@ -122,11 +158,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build g++ libgtk-3-dev
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -134,14 +165,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: |
-          cd ./GUI-ver
-          flet build linux
+        run: flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./GUI-ver/build/linux ./release/
+          cp -r ./dist/XC ./release/
           zip -r ./release/XC-ubuntu20.zip ./release/
 
       - name: Upload Release Asset
@@ -184,20 +213,18 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip binutils zip gcc gcc-c++ libffi-devel ninja gtk3-devel git which cmake clang &&
+            dnf install -y python3 python3-pip binutils zip gcc libffi-devel &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            git config --global --add safe.directory /root/flutter/3.27.4 &&
-            cd ./GUI-ver &&
-            flet build linux &&
-            ls -lah ./build/linux/
+            flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir &&
+            ls -lah ./dist/
           "
 
       - name: Preprocess Release Files
         run: |
           mkdir -p release
-          cp -r ./GUI-ver/build/linux ./release/
+          cp -r ./dist/XC ./release/
           zip -r ./release/XC-fedora.zip ./release/
 
       - name: Upload Release Asset
@@ -229,7 +256,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ubuntu-release
-          path: ./release/ubuntu-latest/
+          path: ./release/ubuntu/
 
       - name: Download Release Assets
         uses: actions/download-artifact@v4
@@ -268,7 +295,7 @@ jobs:
           gh release upload \
             "v4.2-${{ github.run_number }}" \
             ./release/windows/XC-windows.zip \
-            ./release/ubuntu/XC-ubuntu-latest.zip \
+            ./release/ubuntu/XC-ubuntu.zip \
             ./release/ubuntu20/XC-ubuntu20.zip \
             ./release/fedora/XC-fedora.zip \
             ./release/cli/XC-CLI.zip \

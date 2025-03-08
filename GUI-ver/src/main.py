@@ -463,12 +463,12 @@ class XrayClientUI:
             items=[
                 ft.PopupMenuItem(
                     text="By Ping",
-                    icon=ft.icons.NETWORK_PING,
+                    icon=ft.Icons.NETWORK_PING,
                     on_click=lambda _: self.sort_configs_by_ping(config_list)
                 ),
                 ft.PopupMenuItem(
                     text="By Number",
-                    icon=ft.icons.FORMAT_LIST_NUMBERED,
+                    icon=ft.Icons.FORMAT_LIST_NUMBERED,
                     on_click=lambda _: self.sort_configs_by_number(config_list)
                 ),
             ],
@@ -902,9 +902,9 @@ class XrayClientUI:
                     try:
                         self.backend.import_subscription(name, url)
                         self.add_profile_tab(name)
-                        self.page.snack_bar = ft.SnackBar(ft.Text("Subscription imported successfully!"), open=True)
+                        self.page.open(ft.SnackBar(ft.Text("Subscription imported successfully!"), open=True))
                     except Exception as error:
-                        self.page.snack_bar = ft.SnackBar(ft.Text(f"Error: {error}"), open=True)
+                        self.page.open(ft.SnackBar(ft.Text(f"Error: {error}"), open=True))
                     finally:
                         loading_dialog.open = False
                         dialog.open = False
@@ -924,12 +924,12 @@ class XrayClientUI:
                         random_word = ''.join(random.choice(letters) for _ in range(8))
                         self.backend.import_subscription(random_word, data)
                         dialog.open = False
-                        self.page.snack_bar = ft.SnackBar(ft.Text("JSON file imported successfully!"), open=True)
+                        self.page.open(ft.SnackBar(ft.Text("JSON file imported successfully!"), open=True))
                         self.page.update()
                         self.refresh_profile_tab("all")
 
                 except Exception as ex:
-                    self.page.snack_bar = ft.SnackBar(ft.Text(f"Error loading JSON file: {ex}"), open=True)
+                    self.page.open(ft.SnackBar(ft.Text(f"Error loading JSON file: {ex}"), open=True))
 
         # Input fields for subscription
         name_field = ft.TextField(label="Profile Name")
@@ -1223,15 +1223,15 @@ class XrayClientUI:
             try:
                 self.backend.update_subscription(profile)
                 self.refresh_profile_tab(profile="all")
-                self.page.snack_bar = ft.SnackBar(
+                self.page.open(ft.SnackBar(
                     ft.Text("Subscription updated successfully!"),
                     open=True
-                )
+                ))
             except Exception as error:
-                self.page.snack_bar = ft.SnackBar(
+                self.page.open(ft.SnackBar(
                     ft.Text(f"Update error: {error}"),
                     open=True
-                )
+                ))
             finally:
                 loading_dialog.open = False
                 self.page.update()

@@ -29,14 +29,6 @@ class XrayBackend:
         self.useragant = lambda: json.load(open("./setting.json", "r"))["useragent"]
         self._process_output_buffer = deque(maxlen=100)
         self._output_lock = threading.Lock()
-        # self._upload_speed = 0
-        # self._download_speed = 0
-        # self._total_upload = 0
-        # self._total_download = 0
-        # self._traffic_lock = threading.Lock()
-        # self._last_traffic_check = time.time()
-        # self._last_bytes_sent = 0
-        # self._last_bytes_recv = 0
         self.xray_path = XRAY_PATH  # Path to xray executable
         self.server = API        # Xray API server address
         self._last_bytes_sent = 0   # Last recorded upload bytes
@@ -71,119 +63,180 @@ class XrayBackend:
         return configs
 
     def import_subscription(self, name, url):
-        if isinstance (url , str)  :
-            if url.startswith("http"):
-                useragent = str(self.useragant())
-                headers = {"user-agent": useragent}
-                r = requests.get(url=url, headers=headers)
-                text = r.text
-                if "[" in text :
-                    #  custom
-                    self.log("Custom config Detect ...")
-                    data = r.json()
-                    dict_name = {}
-                    count = 0
-                    for config in data :
-                        directory_path = f"./subs/{name}"
-                        Path(directory_path).mkdir(parents=True, exist_ok=True)
+        def add_api_stats_config(config):
+            """Add API, stats and policy settings to config if missing"""
+            base_additions = {
+                "api": {
+                    "tag": "api",
+                    "services": ["HandlerService", "LoggerService", "StatsService"]
+                },
+                "stats": {},
+                "policy": {
+                    "levels": {
+                        "0": {
+                            "statsUserUplink": True,
+                            "statsUserDownlink": True
+                        }
+                    },
+                    "system": {
+                        "statsInboundUplink": True,
+                        "statsInboundDownlink": True,
+                        "statsOutboundUplink": True,
+                        "statsOutboundDownlink": True
+                    }
+                }
+            }
 
-                        try :
-                            del config["dns"]
-                        except Exception as e:
-                            self.log(f"Faild in delete dns Parse Json ...{e}")
-                        try :
-                            config["inbounds"][0]["port"] = 1080
-                            config["inbounds"][1]["port"] = 1081
-                        except Exception as e :
-                            self.log(f"Faild in chenge port Json ...  {e}")
-                        config_name = config["remarks"]
-                        config_json = json.dumps(config , indent=4)
+            # Add API inbound if missing
+            api_inbound = {
+                "tag": "api",
+                "port": 10085,
+                "listen": "127.0.0.1", 
+                "protocol": "dokodemo-door",
+                "settings": {
+                    "address": "127.0.0.1"
+                }
+            }
 
-                        if config_name != "False":
-                            with open(f"./subs/{name}/{count}.json", "w") as f:
-                                f.write(config_json)
-                            dict_name[count] = config_name
-                            count += 1
-                    with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                        json.dump(dict_name, f, ensure_ascii=False, indent=4)
-                    with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                        f.write(url)
-                    
-                else :    
-                    decoded_bytes = base64.b64decode(text)
-                    decoded_str = decoded_bytes.decode('utf-8')
-                    list_configs = decoded_str.split("\n")
+            if "inbounds" not in config:
+                config["inbounds"] = []
+            
+            if not any(inb.get("tag") == "api" for inb in config["inbounds"]):
+                config["inbounds"].append(api_inbound)
 
-                    directory_path = f"./subs/{name}"
-                    Path(directory_path).mkdir(parents=True, exist_ok=True)
+            # Add other base components if missing
+            for key, value in base_additions.items():
+                if key not in config:
+                    config[key] = value
 
-                    dict_name = {}
-                    for count, config in enumerate(list_configs):
-                        if config.strip():
-                            config_json, config_name = convert.convert(config)
-                            if config_json == None :
-                                continue
-                            if config_name != "False":
-                                with open(f"./subs/{name}/{count}.json", "w") as f:
+            # Add API routing rule if missing
+            if "routing" not in config:
+                config["routing"] = {"rules": []}
+            
+            api_rule = {
+                "type": "field",
+                "inboundTag": ["api"],
+                "outboundTag": "api"
+            }
+
+            if not any(rule.get("inboundTag") == ["api"] for rule in config["routing"].get("rules", [])):
+                config["routing"]["rules"].insert(0, api_rule)
+
+            return config
+
+        try:
+            directory_path = f"./subs/{name}"
+            Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+            if isinstance(url, str):
+                if url.startswith("http"):
+                    # HTTP(S) subscription
+                    useragent = str(self.useragant())
+                    headers = {"user-agent": useragent}
+                    response = requests.get(url=url, headers=headers, timeout=10)
+                    response.raise_for_status()
+                    text = response.text
+
+                    if text.strip().startswith("["):
+                        # Custom JSON array config
+                        self.log("Custom config array detected...")
+                        configs = json.loads(text)
+                        dict_name = {}
+                        
+                        for count, config in enumerate(configs):
+                            try:
+                                # Add required components if missing
+                                config = add_api_stats_config(config)
+                                
+                                # Update inbound ports
+                                for inbound in config.get("inbounds", []):
+                                    if inbound.get("tag") == "socks":
+                                        inbound["port"] = 1080
+                                    elif inbound.get("tag") == "api":
+                                        inbound["port"] = 10085
+
+                                config_name = config.get("remarks", f"Config {count + 1}")
+                                config_json = json.dumps(config, indent=4)
+
+                                with open(f"{directory_path}/{count}.json", "w") as f:
                                     f.write(config_json)
                                 dict_name[count] = config_name
+                            except Exception as e:
+                                self.log(f"Error processing config {count}: {str(e)}")
+                                continue
 
-                    with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                        json.dump(dict_name, f, ensure_ascii=False, indent=4)
-                    with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                        f.write(url)
-            
-            # one costum config
-            elif "{" in url :
-                if url.strip():
-                    directory_path = f"./subs/{name}"
-                    Path(directory_path).mkdir(parents=True, exist_ok=True)
+                    else:
+                        # Base64 encoded subscription
+                        try:
+                            decoded_str = base64.b64decode(text).decode('utf-8')
+                            configs = [x.strip() for x in decoded_str.split("\n") if x.strip()]
+                            dict_name = {}
+                            
+                            for count, config in enumerate(configs):
+                                try:
+                                    config_json, config_name = convert.convert(config)
+                                    if config_json and config_name != "False":
+                                        with open(f"{directory_path}/{count}.json", "w") as f:
+                                            f.write(config_json)
+                                        dict_name[count] = config_name
+                                except Exception as e:
+                                    self.log(f"Error converting config {count}: {str(e)}")
+                                    continue
+                        except Exception as e:
+                            self.log(f"Error decoding base64: {str(e)}")
+                            return
 
-                    data = json.loads(url)
-                    try :
-                        del data["dns"]
+                elif url.startswith("{"):
+                    # Single JSON config
+                    try:
+                        config = json.loads(url)
+                        config = add_api_stats_config(config)
+                        
+                        # Update inbound ports
+                        for inbound in config.get("inbounds", []):
+                            if inbound.get("tag") == "socks":
+                                inbound["port"] = 1080
+                            elif inbound.get("tag") == "api":
+                                inbound["port"] = 10085
+
+                        config_name = config.get("remarks", ''.join(random.choices(string.ascii_letters, k=8)))
+                        config_json = json.dumps(config, indent=4)
+                        
+                        with open(f"{directory_path}/0.json", "w") as f:
+                            f.write(config_json)
+                        dict_name = {0: config_name}
+                    except json.JSONDecodeError as e:
+                        self.log(f"Invalid JSON config: {str(e)}")
+                        return
+                        
+                else:
+                    # Single vmess/vless config
+                    try:
+                        config_json, config_name = convert.convert(url)
+                        if config_json and config_name != "False":
+                            with open(f"{directory_path}/0.json", "w") as f:
+                                f.write(config_json)
+                            dict_name = {0: config_name}
+                        else:
+                            self.log("Config not supported or invalid")
+                            return
                     except Exception as e:
-                        self.log(f"Faild in delete dns Parse Json ...{e}")
-                    try :
-                        data["inbounds"][0]["port"] = 1080
-                        data["inbounds"][1]["port"] = 1081
-                    except Exception as e :
-                        self.log(f"Faild in chenge port Json ...  {e}")
+                        self.log(f"Error converting config: {str(e)}")
+                        return
 
-                    def generate_random_word(length=8):
-                        return ''.join(random.choices(string.ascii_letters, k=length))
-                    
-                    config_name = data.get("remarks", generate_random_word())
-                    config_json = json.dumps(data , indent=4)
-
-                    if config_name != "False":
-                        with open(f"./subs/{name}/0.json", "w") as f:
-                            f.write(config_json)
-                with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                    json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
-                with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
+                # Save config list and URL
+                with open(f"{directory_path}/list.json", "w", encoding="utf-8") as f:
+                    json.dump(dict_name, f, ensure_ascii=False, indent=4)
+                
+                with open(f"{directory_path}/url.txt", "w", encoding="utf-8") as f:
                     f.write(url)
+            else:
+                self.log("URL must be a string")
 
-            #one vmess or vless config
-            else  :
-                config  = url
-                directory_path = f"./subs/{name}"
-                Path(directory_path).mkdir(parents=True, exist_ok=True)
-
-                if config.strip():
-                    config_json, config_name = convert.convert(config)
-                    if config_json == None :
-                        self.log("Config Not Support")
-                    if config_name != "False":
-                        with open(f"./subs/{name}/0.json", "w") as f:
-                            f.write(config_json)
-                with open(f"./subs/{name}/list.json", "w", encoding="utf-8") as f:
-                    json.dump({0:config_name}, f, ensure_ascii=False, indent=4)
-                with open(f"./subs/{name}/url.txt", "w", encoding="utf-8") as f:
-                    f.write(url)
-
-        else :
-            self.log("URL not  String ...")
+        except Exception as e:
+            self.log(f"Error in import_subscription: {str(e)}")
+            if os.path.exists(directory_path):
+                shutil.rmtree(directory_path)
 
     def update_subscription(self, profile):
         path = f"./subs/{profile}/url.txt"
