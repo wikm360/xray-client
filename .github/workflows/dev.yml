@@ -32,7 +32,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
@@ -85,7 +85,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
@@ -117,7 +117,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
@@ -169,7 +169,7 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/src/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir &&
+            flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir &&
             ls -lah ./dist/
           "
 
