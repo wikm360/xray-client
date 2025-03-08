@@ -31,9 +31,11 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
+        env:
+          PYTHONIOENCODING: utf-8
+          NO_COLOR: 1
         run: |
           cd ./GUI-ver
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           flet build windows
         shell: pwsh
 
@@ -182,10 +184,11 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip binutils zip gcc libffi-devel ninja gtk3-devel git &&
+            dnf install -y python3 python3-pip binutils zip gcc libffi-devel ninja gtk3-devel git which &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
+            git config --global --add safe.directory /root/flutter/3.27.4 &&
             cd ./GUI-ver &&
             flet build linux &&
             ls -lah ./build/linux/
