@@ -570,15 +570,12 @@ class XrayBackend:
             self.singbox_process.terminate()
             self.singbox_process = None
             self.log("Sing-box has been stopped.")
-        # Reset traffic stats when stopping Xray
-        with self._traffic_lock:
-            self._upload_speed = 0
-            self._download_speed = 0 
-            self._total_upload = 0
-            self._total_download = 0
-            if hasattr(self, '_last_up'):
-                del self._last_up
-                del self._last_down
+            
+        # Reset traffic stats and last values when stopping Xray
+        self._last_bytes_sent = 0
+        self._last_bytes_recv = 0
+        self._last_traffic_check = time.time()
+        
         return "Xray and Sing-box are not running."
 
     def set_system_proxy(self , proxy_ip, proxy_port):

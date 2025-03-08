@@ -85,13 +85,14 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/icon.ico ./GUI-ver/GUI.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm
+        run: |
+          cd ./GUI-ver
+          flet build linux
 
       - name: Zip executable and folders
         run: |
           mkdir release
-          cp -r ./dist/XC ./release/
-          cp -r ./GUI-ver/subs ./release/
+          cp -r ./GUI-ver/build/linux ./release/
           zip -r ./release/XC-ubuntu.zip ./release/
 
       - name: Upload Release Asset

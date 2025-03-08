@@ -21,7 +21,7 @@ class XrayClientUI:
         self.backend.log_callback = self.log
         self.page.padding = 20 # padding of all page
         self.page.window.min_width = 600
-        self.page.window.min_height =730
+        self.page.window.min_height = 900
         self.useragent = self.read_settinng("useragent")
         self.current_view = "logs"  # Track current view: "logs" or "traffic"
         self.traffic_update_timer = None
@@ -33,7 +33,7 @@ class XrayClientUI:
         self.page.window.on_event = handle_window_event
 
         self.selected_config = None
-        self.selected_profile = None  # اضافه کردن متغیر جدید
+        self.selected_profile = None
         self.real_delay_stat = None
         self.ping_all_button = None
         self.close_event = self.backend.close_event
@@ -47,8 +47,8 @@ class XrayClientUI:
             expand=1,
         )
         self.last_update_time = 0
-        self.update_interval = 0.5  # افزایش فاصله به‌روزرسانی به 500ms
-        self.log_buffer = deque(maxlen=30)  # کاهش سایز بافر لاگ
+        self.update_interval = 0.5  #  فاصله به‌روزرسانی 500ms
+        self.log_buffer = deque(maxlen=30)  # سایز بافر لاگ
         self.pending_updates = []  # برای مدیریت به‌روزرسانی‌ها
         self.update_timer = None
         self.last_logged_message = None
@@ -290,25 +290,46 @@ class XrayClientUI:
         self.traffic_view = ft.Container(
             content=ft.Column([
                 ft.Row([
-                    ft.Icon(ft.Icons.UPLOAD, color=ft.Colors.GREEN),
-                    ft.Text("Upload: 0 B/s", size=16, weight=ft.FontWeight.BOLD),
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.UPLOAD, color=ft.Colors.GREEN),
+                            ft.Text("Upload: 0 B/s", size=16, weight=ft.FontWeight.BOLD),
+                        ], alignment=ft.MainAxisAlignment.CENTER),
+                        expand=True,
+                        margin=5,
+                    ),
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.DOWNLOAD, color=ft.Colors.BLUE),
+                            ft.Text("Download: 0 B/s", size=16, weight=ft.FontWeight.BOLD),
+                        ], alignment=ft.MainAxisAlignment.CENTER),
+                        expand=True,
+                        margin=5,
+                    ),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Row([
-                    ft.Icon(ft.Icons.DOWNLOAD, color=ft.Colors.BLUE),
-                    ft.Text("Download: 0 B/s", size=16, weight=ft.FontWeight.BOLD),
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Row([
-                    ft.Icon(ft.Icons.DATA_USAGE, color=ft.Colors.ORANGE),
-                    ft.Text("Total Upload: 0 B", size=16, weight=ft.FontWeight.BOLD),
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Row([
-                    ft.Icon(ft.Icons.DATA_USAGE, color=ft.Colors.PURPLE),
-                    ft.Text("Total Download: 0 B", size=16, weight=ft.FontWeight.BOLD),
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.DATA_USAGE, color=ft.Colors.ORANGE),
+                            ft.Text("Total Upload: 0 B", size=16, weight=ft.FontWeight.BOLD),
+                        ], alignment=ft.MainAxisAlignment.CENTER),
+                        expand=True,
+                        margin=5,
+                    ),
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.DATA_USAGE, color=ft.Colors.PURPLE),
+                            ft.Text("Total Download: 0 B", size=16, weight=ft.FontWeight.BOLD),
+                        ], alignment=ft.MainAxisAlignment.CENTER),
+                        expand=True,
+                        margin=5,
+                    ),
                 ], alignment=ft.MainAxisAlignment.CENTER),
             ], 
             alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20),
-            padding=30,
+            # spacing=5
+            ),
+            # padding=10,
             expand=True,
             visible=False,  # Initially hidden
         )
@@ -431,9 +452,13 @@ class XrayClientUI:
             content=ft.Row(
                 [
                     ft.Icon(ft.Icons.SORT, size=20),
-                    ft.Text("Sort", size=16),
+                    # ft.Text("Sort", size=16),
                 ],
                 spacing=8,
+            ),
+            style=ft.ButtonStyle(
+                padding=ft.padding.all(15),
+                shape=ft.RoundedRectangleBorder(radius=8),
             ),
             items=[
                 ft.PopupMenuItem(
@@ -474,7 +499,7 @@ class XrayClientUI:
                         with open(json_path, "r", encoding="utf-8") as file:
                             data = json.load(file)
                             self.selected_config = str(index) + " " + "-" + " " + data[index]
-                            self.selected_profile = p  # اضافه کردن این خط
+                            self.selected_profile = p
                         self.refresh_profile_tab(p)
                     else:
                         print(f"config NotFound : {json_path}")
@@ -1320,11 +1345,15 @@ class XrayClientUI:
                     upload_speed, download_speed = stats.get('speed', (0, 0))
                     total_upload, total_download = stats.get('total', (0, 0))
                     
-                    # به‌روزرسانی نمایش ترافیک
-                    self.traffic_view.content.controls[0].controls[1].value = f"Upload: {self.format_bytes(upload_speed)}/s"
-                    self.traffic_view.content.controls[1].controls[1].value = f"Download: {self.format_bytes(download_speed)}/s"
-                    self.traffic_view.content.controls[2].controls[1].value = f"Total Upload: {self.format_bytes(total_upload)}"
-                    self.traffic_view.content.controls[3].controls[1].value = f"Total Download: {self.format_bytes(total_download)}"
+                    # به‌روزرسانی نمایش ترافیک - اصلاح مسیر دسترسی به المان‌ها
+                    row1_containers = self.traffic_view.content.controls[0].controls
+                    row2_containers = self.traffic_view.content.controls[1].controls
+                    
+                    row1_containers[0].content.controls[1].value = f"Upload: {self.format_bytes(upload_speed)}/s"
+                    row1_containers[1].content.controls[1].value = f"Download: {self.format_bytes(download_speed)}/s"
+                    row2_containers[0].content.controls[1].value = f"Total Upload: {self.format_bytes(total_upload)}"
+                    row2_containers[1].content.controls[1].value = f"Total Download: {self.format_bytes(total_download)}"
+                    
                     self.page.update()
 
             # زمان‌بندی به‌روزرسانی بعدی
