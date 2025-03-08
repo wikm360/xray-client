@@ -229,7 +229,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ubuntu-release
-          path: ./release/ubuntu/
+          path: ./release/ubuntu-latest/
 
       - name: Download Release Assets
         uses: actions/download-artifact@v4
@@ -268,7 +268,7 @@ jobs:
           gh release upload \
             "v4.2-${{ github.run_number }}" \
             ./release/windows/XC-windows.zip \
-            ./release/ubuntu/XC-ubuntu.zip \
+            ./release/ubuntu/XC-ubuntu-latest.zip \
             ./release/ubuntu20/XC-ubuntu20.zip \
             ./release/fedora/XC-fedora.zip \
             ./release/cli/XC-CLI.zip \
