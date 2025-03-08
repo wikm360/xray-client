@@ -1,6 +1,6 @@
 [project]
 name = "Xray-Client"
-version = "4.2-7"
+version = "LTS4.2-8"
 description = "A VPN client based on Xray"
 readme = "README.md"
 requires-python = ">=3.12"

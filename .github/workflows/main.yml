@@ -31,7 +31,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version vLTS-4.2-${{ github.run_number }} --file-version vLTS-4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
@@ -84,7 +84,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version vLTS-4.2-${{ github.run_number }} --file-version vLTS-4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
@@ -116,7 +116,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build executable with flet
-        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir
+        run: flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version vLTS-4.2-${{ github.run_number }} --file-version vLTS-4.2-${{ github.run_number }} --company-name wikm.ir
 
       - name: Zip executable and folders
         run: |
@@ -168,7 +168,7 @@ jobs:
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
-            flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version v4.2-${{ github.run_number }} --file-version v4.2-${{ github.run_number }} --company-name wikm.ir &&
+            flet pack -i ./GUI-ver/src/assets/icon.ico ./GUI-ver/src/main.py -n XC --product-name XC --file-description "XC Created By wikm" --product-version vLTS-4.2-${{ github.run_number }} --file-version vLTS-4.2-${{ github.run_number }} --company-name wikm.ir &&
             ls -lah ./dist/
           "
 
@@ -232,19 +232,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           gh release create
-          "v4.2-${{ github.run_number }}"
+          "vLTS-4.2-${{ github.run_number }}"
           --repo "${{ github.repository }}"
           --notes ""
           --prerelease
           --generate-notes
-          --title "Release v4.2-${{ github.run_number }}"
+          --title "Release vLTS-4.2-${{ github.run_number }}"
 
       - name: Upload artifacts to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload \
-            "v4.2-${{ github.run_number }}" \
+            "vLTS-4.2-${{ github.run_number }}" \
             ./release/windows/XC-windows.zip \
             ./release/ubuntu/XC-ubuntu.zip \
             ./release/ubuntu20/XC-ubuntu20.zip \
