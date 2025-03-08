@@ -33,7 +33,7 @@ jobs:
       - name: Build executable with flet
         run: |
           cd ./GUI-ver
-          flet build windows
+          flet build windows --no-rich-output
 
       - name: Zip executable and folders
         run: |
@@ -138,7 +138,6 @@ jobs:
         run: |
           mkdir release
           cp -r ./GUI-ver/build/linux ./release/
-          cp -r ./GUI-ver/subs ./release/
           zip -r ./release/XC-ubuntu20.zip ./release/
 
       - name: Upload Release Asset
@@ -153,10 +152,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Docker
+      - name: Check if Docker is Installed
+        run: docker --version || echo "Docker not found. Installing..."
+
+      - name: Install Docker dependencies (if needed)
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io
+          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+
+      - name: Add Docker’s official GPG key and repository
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+      - name: Install Docker
+        run: sudo apt-get install -y docker-ce
+
+      - name: Start Docker
+        run: |
           sudo systemctl start docker
           sudo systemctl enable docker
 
@@ -167,7 +180,8 @@ jobs:
         run: |
           docker run -v ${{ github.workspace }}:/app -w /app fedora:latest bash -c "
             dnf update -y &&
-            dnf install -y python3 python3-pip ninja gcc-c++ gtk3-devel zip &&
+            dnf install -y python3 python3-pip binutils zip gcc libffi-devel ninja gtk3-devel &&
+            dnf install -y python3 python3-pip  &&
             pip3 install --upgrade pip &&
             pip3 install pyinstaller &&
             pip3 install -r requirements.txt &&
