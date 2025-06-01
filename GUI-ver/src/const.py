@@ -16,7 +16,7 @@ def os_det():
 OS_SYS = os_det()
 
 XRAY_PATH=f"./core/{OS_SYS}/xray"
-APP_VERSION = "4.3-10"
+APP_VERSION = "4.3-11"
 ROOT = "./"
 CORE_PATH = "./core"
 SAVE_PATH = "./core.zip"

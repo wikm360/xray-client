@@ -18,6 +18,7 @@ class XrayClientUI:
         self.page.title = "XC (Xray-Client)"
         self.page.theme_mode = self.read_settinng("theme")
         self.debug_mod = self.read_settinng("debug")
+        self.theme_color = self.change_theme_color(self.read_settinng("theme_color"))
         self.backend.log_callback = self.log
         self.page.padding = 20 # padding of all page
         self.page.window.min_width = 600
@@ -91,6 +92,7 @@ class XrayClientUI:
                         data = json.loads(f)
                         ping = data.get("ping", default_settings["ping"])
                         theme = data.get("theme", default_settings["theme"])
+                        theme_color = data.get("theme_color" , default_settings["theme_color"])
                         debug = data.get("debug", default_settings["debug"])
                         useragent = data.get("useragent", default_settings["useragent"])
                     except json.JSONDecodeError:
@@ -98,6 +100,7 @@ class XrayClientUI:
                         print("Error decoding JSON, using default settings.")
                         ping = default_settings["ping"]
                         theme = default_settings["theme"]
+                        theme_color = default_settings["theme_color"]
                         debug = default_settings["debug"]
                         useragent = default_settings["useragent"]
                 else:
@@ -105,6 +108,7 @@ class XrayClientUI:
                     print("File is empty, using default settings.")
                     ping = default_settings["ping"]
                     theme = default_settings["theme"]
+                    theme_color = default_settings["theme_color"]
                     debug = default_settings["debug"]
                     useragent = default_settings["useragent"]
                     with open("./setting.json" , "w") as file :
@@ -114,6 +118,7 @@ class XrayClientUI:
             print("File not found, using default settings.")
             ping = default_settings["ping"]
             theme = default_settings["theme"]
+            theme_color = default_settings["theme_color"]
             debug = default_settings["debug"]
             useragent = default_settings["useragent"]
             with open("./setting.json" , "w") as file :
@@ -127,8 +132,8 @@ class XrayClientUI:
                 return ft.ThemeMode.DARK
             elif theme_mode == "light" :
                 return ft.ThemeMode.LIGHT
-        elif type == "theme_color":  # اضافه کردن خواندن رنگ تم
-            return data.get("theme_color", default_settings["theme_color"])
+        elif type == "theme_color":
+            return theme_color
         elif type == "debug" :
             return debug
         elif type == "useragent" :
@@ -212,8 +217,8 @@ class XrayClientUI:
                     ft.ControlState.HOVERED: ft.Colors.WHITE,
                 },
                 bgcolor={
-                    ft.ControlState.DEFAULT: ft.Colors.BLUE,
-                    ft.ControlState.HOVERED: ft.Colors.BLUE_700,
+                    ft.ControlState.DEFAULT: ft.Colors.PRIMARY,
+                    ft.ControlState.HOVERED: ft.Colors.SECONDARY,
                 },
             ),
             on_click=self.show_import_dialog,
@@ -288,7 +293,7 @@ class XrayClientUI:
             label="Proxy",
             value=True,
             active_color=ft.Colors.GREY_400,
-            inactive_thumb_color=ft.Colors.BLUE,
+            inactive_thumb_color=ft.Colors.PRIMARY,
             on_change=self.toggle_mode,
         )
 
@@ -298,7 +303,7 @@ class XrayClientUI:
             expand=True,
             min_lines=12,
             max_lines=20,
-            border_color=ft.Colors.BLUE_200,
+            border_color=ft.Colors.SECONDARY,
             border_radius=8,
             text_size=14,
             visible=True,  # Initially visible
@@ -378,7 +383,7 @@ class XrayClientUI:
             ], alignment=ft.MainAxisAlignment.CENTER),
             ft.Container(height=5),
             ft.Row([
-                ft.Icon(ft.Icons.TERMINAL, color=ft.Colors.BLUE),
+                ft.Icon(ft.Icons.TERMINAL, color=ft.Colors.PRIMARY),
                 ft.Text("Xray Status:", size=18, weight=ft.FontWeight.BOLD),
             ], alignment=ft.MainAxisAlignment.CENTER),
             self.log_view,
@@ -402,7 +407,7 @@ class XrayClientUI:
         # Create search field
         search_field = ft.TextField(
             label="Search configs",
-            prefix_icon=ft.icons.SEARCH,
+            prefix_icon=ft.Icons.SEARCH,
             expand=True,
             on_change=lambda e, lst=config_list, p=profile: self.filter_configs(e.control.value, lst, p),
             height=40,
@@ -758,7 +763,7 @@ class XrayClientUI:
         return ft.ListTile(
             leading=ft.Icon(
                 ft.Icons.CLOUD,
-                color=ft.Colors.BLUE if is_selected else ft.Colors.GREY,
+                color=ft.Colors.PRIMARY if is_selected else ft.Colors.GREY,
                 size=24,
             ),
             title=ft.Container(
@@ -769,7 +774,7 @@ class XrayClientUI:
                 ),
                 bgcolor=ft.Colors.TRANSPARENT,  # Remove background color from container
                 padding=ft.padding.all(12),
-                animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
+                animate=ft.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
                 border_radius=8,
             ),
             trailing=ft.Container(
@@ -784,7 +789,7 @@ class XrayClientUI:
             on_click=lambda _, c=config, p=profile: self.select_config(c, p),
             on_long_press=ping_selected_config,
             tooltip="Hold to Ping",
-            bgcolor=ft.Colors.BLUE_100 if is_selected else ft.Colors.TRANSPARENT,  # Move background color to ListTile
+            bgcolor=ft.Colors.SECONDARY if is_selected else ft.Colors.TRANSPARENT,  # Move background color to ListTile
         )
 
     # "0"  = cancel does not exist
@@ -1215,30 +1220,41 @@ class XrayClientUI:
         print(f"Ping type changed to: {self.ping_type}")
 
     def change_theme_color(self, e):
-        color = e.control.value
+        color = getattr(e, "control", None)
+        if color:
+            color = color.value
+        else:
+            color = e
+
         self.write_setting("theme_color", color)
         
         # تنظیم رنگ‌های مختلف برنامه
         if color == "blue":
-            primary_color = ft.colors.BLUE
-            primary_container = ft.colors.BLUE_100
+            primary_color = ft.Colors.BLUE
+            primary_container = ft.Colors.BLUE_100
+            secondary_color = ft.Colors.BLUE_700
         elif color == "red":
-            primary_color = ft.colors.RED
-            primary_container = ft.colors.RED_100
+            primary_color = ft.Colors.RED
+            primary_container = ft.Colors.RED_100
+            secondary_color = ft.Colors.RED_700
         elif color == "green":
-            primary_color = ft.colors.GREEN
-            primary_container = ft.colors.GREEN_100
+            primary_color = ft.Colors.GREEN
+            primary_container = ft.Colors.GREEN_100
+            secondary_color = ft.Colors.GREEN_700
         elif color == "purple":
-            primary_color = ft.colors.PURPLE
-            primary_container = ft.colors.PURPLE_100
+            primary_color = ft.Colors.PURPLE
+            primary_container = ft.Colors.PURPLE_100
+            secondary_color = ft.Colors.PURPLE_700
         elif color == "orange":
-            primary_color = ft.colors.ORANGE
-            primary_container = ft.colors.ORANGE_100
+            primary_color = ft.Colors.ORANGE
+            primary_container = ft.Colors.ORANGE_100
+            secondary_color = ft.Colors.ORANGE_700
 
         self.page.theme = ft.Theme(
             color_scheme=ft.ColorScheme(
                 primary=primary_color,
                 primary_container=primary_container,
+                secondary=secondary_color
             )
         )
         self.page.update()
