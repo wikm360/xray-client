@@ -21,7 +21,7 @@ class XrayClientUI:
         self.backend.log_callback = self.log
         self.page.padding = 20 # padding of all page
         self.page.window.min_width = 600
-        self.page.window.min_height = 900
+        self.page.window.min_height = 800
         self.useragent = self.read_settinng("useragent")
         self.current_view = "logs"  # Track current view: "logs" or "traffic"
         self.traffic_update_timer = None
