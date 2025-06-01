@@ -698,10 +698,12 @@ class XrayBackend:
     def _get_xray_traffic(self, stat_name):
             """Helper function to get traffic stats from Xray"""
             try:
+                creation_flags = subprocess.CREATE_NO_WINDOW if self.os_sys == "win" else 0
                 result = subprocess.run(
                     [self.xray_path, "api", "stats", f"--server={self.server}", f"-name={stat_name}"],
                     capture_output=True,
-                    text=True
+                    text=True,
+                    creationflags=creation_flags
                 )
                 if result.returncode == 0:
                     data = json.loads(result.stdout)
