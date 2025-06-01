@@ -47,9 +47,9 @@ class XrayClientUI:
             expand=1,
         )
         self.last_update_time = 0
-        self.update_interval = 0.5  #  فاصله به‌روزرسانی 500ms
-        self.log_buffer = deque(maxlen=30)  # سایز بافر لاگ
-        self.pending_updates = []  # برای مدیریت به‌روزرسانی‌ها
+        self.update_interval = 0.5
+        self.log_buffer = deque(maxlen=30)
+        self.pending_updates = []
         self.update_timer = None
         self.last_logged_message = None
 
@@ -76,7 +76,13 @@ class XrayClientUI:
     
     @staticmethod
     def read_settinng (type) :
-        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" , "useragent" : "XC(Xray-Client)"}
+        default_settings = {
+            "ping": "Tcping", 
+            "theme": "dark",
+            "theme_color": "blue",
+            "debug": "off",
+            "useragent": "XC(Xray-Client)"
+        }
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
                 f = file.read()
@@ -116,17 +122,26 @@ class XrayClientUI:
         if type == "ping" :
             return ping
         elif type == "theme" :
-            if theme == "dark" :
+            theme_mode = data.get("theme", default_settings["theme"])
+            if theme_mode == "dark" :
                 return ft.ThemeMode.DARK
-            elif theme == "light" :
+            elif theme_mode == "light" :
                 return ft.ThemeMode.LIGHT
+        elif type == "theme_color":  # اضافه کردن خواندن رنگ تم
+            return data.get("theme_color", default_settings["theme_color"])
         elif type == "debug" :
             return debug
         elif type == "useragent" :
             return useragent
 
     def write_setting(self , type , value):
-        default_settings = {"ping": "Tcping", "theme": "dark" , "debug":"off" , "useragent" : "XC(Xray-Client)"}
+        default_settings = {
+            "ping": "Tcping", 
+            "theme": "dark",
+            "theme_color": "blue",
+            "debug": "off",
+            "useragent": "XC(Xray-Client)"
+        }
         if os.path.exists("./setting.json"):
             with open("./setting.json", "r") as file:
                 f = file.read()
@@ -152,6 +167,8 @@ class XrayClientUI:
             data["debug"] = value
         elif type ==  "useragent" :
             data["useragent"] = value
+        elif type == "theme_color":
+            data["theme_color"] = value
 
         with open("./setting.json", "w") as file:
             json_data = json.dumps(data, indent=4)
@@ -382,6 +399,17 @@ class XrayClientUI:
         configs = self.backend.get_configs(profile)
         config_list = ft.ListView(expand=1, spacing=0, padding=20)
 
+        # Create search field
+        search_field = ft.TextField(
+            label="Search configs",
+            prefix_icon=ft.icons.SEARCH,
+            expand=True,
+            on_change=lambda e, lst=config_list, p=profile: self.filter_configs(e.control.value, lst, p),
+            height=40,
+            text_size=14,
+            content_padding=10,
+        )
+
         for config in configs:
             config_list.controls.append(self.create_config_tile_with_ping(config, profile))
 
@@ -475,10 +503,15 @@ class XrayClientUI:
             tooltip="Sort configs"
         )
 
+        # Add search field to the tab content
         tab_content = ft.Column([
             ft.Row([update_button, delete_button, edit_button, ping_button, sort_button],
                 alignment=ft.MainAxisAlignment.START,
-                spacing=10), 
+                spacing=10),
+            ft.Container(
+                content=search_field,
+                padding=ft.padding.symmetric(horizontal=20, vertical=10)
+            ),
             config_list
         ], expand=True)
 
@@ -603,6 +636,19 @@ class XrayClientUI:
             expand=True,
         )
 
+        theme_color_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option("blue"),
+                ft.dropdown.Option("red"),
+                ft.dropdown.Option("green"),
+                ft.dropdown.Option("purple"),
+                ft.dropdown.Option("orange"),
+            ],
+            value=self.read_settinng("theme_color"),
+            on_change=self.change_theme_color,
+            expand=True,
+        )
+
         github_button = ft.ElevatedButton(
             content=ft.Row(
                 [
@@ -645,6 +691,10 @@ class XrayClientUI:
                         ),
                         ft.Row(
                             [ft.Text("User-Agent : "), useragent_dropdown],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Row(
+                            [ft.Text("Theme Color : "), theme_color_dropdown],
                             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         ),
                         ft.Divider(height=20, thickness=1),
@@ -717,7 +767,7 @@ class XrayClientUI:
                     size=16,
                     weight=ft.FontWeight.W_500 if is_selected else ft.FontWeight.NORMAL,
                 ),
-                bgcolor=ft.Colors.BLUE_100 if is_selected else ft.Colors.TRANSPARENT,
+                bgcolor=ft.Colors.TRANSPARENT,  # Remove background color from container
                 padding=ft.padding.all(12),
                 animate=ft.animation.Animation(duration=300, curve=ft.AnimationCurve.EASE_IN_OUT),
                 border_radius=8,
@@ -734,6 +784,7 @@ class XrayClientUI:
             on_click=lambda _, c=config, p=profile: self.select_config(c, p),
             on_long_press=ping_selected_config,
             tooltip="Hold to Ping",
+            bgcolor=ft.Colors.BLUE_100 if is_selected else ft.Colors.TRANSPARENT,  # Move background color to ListTile
         )
 
     # "0"  = cancel does not exist
@@ -874,17 +925,13 @@ class XrayClientUI:
             for tab in self.tabs.tabs:
                 if tab.text == profile:
                     configs = self.backend.get_configs(profile)
-                    config_list = tab.content.controls[1]
-                    for control in config_list.controls:
-                        config_name = control.title.content.value
-                        # تغییر شرط رنگ کردن با در نظر گرفتن نام پروفایل
-                        if config_name == self.selected_config and profile == self.selected_profile:
-                            control.title.content.bgcolor = ft.Colors.LIGHT_BLUE
-                        else:
-                            control.title.content.bgcolor = ft.Colors.TRANSPARENT
-                    for config in configs:
-                        if not any(control.title.content.value == config for control in config_list.controls):
-                            config_list.controls.append(self.create_config_tile_with_ping(config, profile))
+                    # Get the ListView which is the last control in tab content
+                    config_list = tab.content.controls[2]  # Changed from [1] to [2] because of search field
+                    
+                    # Update existing configs' appearance
+                    config_list.controls.clear()  # پاک کردن همه کانفیگ‌ها
+                    for config in configs:  # اضافه کردن مجدد با وضعیت جدید
+                        config_list.controls.append(self.create_config_tile_with_ping(config, profile))
                             
                     break
         self.page.update()
@@ -1167,6 +1214,35 @@ class XrayClientUI:
             self.write_setting("ping" , "Tcping")
         print(f"Ping type changed to: {self.ping_type}")
 
+    def change_theme_color(self, e):
+        color = e.control.value
+        self.write_setting("theme_color", color)
+        
+        # تنظیم رنگ‌های مختلف برنامه
+        if color == "blue":
+            primary_color = ft.colors.BLUE
+            primary_container = ft.colors.BLUE_100
+        elif color == "red":
+            primary_color = ft.colors.RED
+            primary_container = ft.colors.RED_100
+        elif color == "green":
+            primary_color = ft.colors.GREEN
+            primary_container = ft.colors.GREEN_100
+        elif color == "purple":
+            primary_color = ft.colors.PURPLE
+            primary_container = ft.colors.PURPLE_100
+        elif color == "orange":
+            primary_color = ft.colors.ORANGE
+            primary_container = ft.colors.ORANGE_100
+
+        self.page.theme = ft.Theme(
+            color_scheme=ft.ColorScheme(
+                primary=primary_color,
+                primary_container=primary_container,
+            )
+        )
+        self.page.update()
+
     def log(self, message):
         if message is None or not isinstance(message, str):
             return
@@ -1375,6 +1451,23 @@ class XrayClientUI:
                 return f"{bytes:.2f} {unit}"
             bytes /= 1024
         return f"{bytes:.2f} TB"
+
+    def filter_configs(self, search_text, config_list, profile):
+        """Filter configs based on search text"""
+        if not search_text:
+            # If search text is empty, show all configs
+            config_list.controls.clear()
+            for config in self.backend.get_configs(profile):
+                config_list.controls.append(self.create_config_tile_with_ping(config, profile))
+        else:
+            # Filter configs that contain the search text (case-insensitive)
+            search_text = search_text.lower()
+            config_list.controls.clear()
+            for config in self.backend.get_configs(profile):
+                if search_text in config.lower():
+                    config_list.controls.append(self.create_config_tile_with_ping(config, profile))
+        
+        self.page.update()
 
 def main(page: ft.Page):
     XrayClientUI(page)
