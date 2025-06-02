@@ -1,7 +1,7 @@
 {
     "ping": "Real-delay",
-    "theme": "light",
+    "theme": "dark",
+    "theme_color": "red",
     "debug": "off",
-    "useragent": "v2rayNG/1.9.16",
-    "theme_color": "green"
+    "useragent": "XC(Xray-Client)"
 }
